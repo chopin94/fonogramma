@@ -1,116 +1,198 @@
-# Fonogramma — auscultazione digitale (PWA)
+<div align="center">
 
-App web installabile (cellulare e PC) per il **fonendoscopio collegato via jack**:
-fonocardiogramma in tempo reale, waterfall ad alto aggiornamento, analisi automatica
-dei toni cardiaci e dei rumori respiratori, visite con archivio pazienti e referto.
+<img src="web/icons/icon.svg" width="96" alt="Fonogramma">
 
-**▶ Usala subito: https://chopin94.github.io/fonogramma/** — apri il link da Chrome
-(Android/PC) o Safari (iPhone) e scegli *Installa app* / *Aggiungi a Home*. Funziona
-anche offline. Senza fonendoscopio puoi provarla con il simulatore integrato
-(*Ausculta → Regolazioni → Sorgente → Simulatore*).
+# Fonogramma
 
-> ⚠️ Strumento didattico e di supporto all'auscultazione: le analisi automatiche sono
-> indicative e non sostituiscono il giudizio clinico. **Non è un dispositivo medico
-> certificato.**
+### Il tuo fonendoscopio diventa digitale.
 
-## Privacy
+Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i polmoni in tempo reale,
+**ascolti** in cuffia, **registri**, **rallenti** e **analizzi** i suoni.
 
-Nella versione pubblicata su GitHub Pages **nessun dato lascia il dispositivo**: pazienti,
-visite e registrazioni sono salvati solo nel browser (IndexedDB). Non ci sono server,
-account, cookie di tracciamento o analytics. Per spostare o conservare i dati usa
-*Impostazioni → Esporta / Importa backup* (file JSON: contiene dati sanitari, custodiscilo
-con cura). Chi vuole sincronizzare più dispositivi può ospitare il proprio server (sotto).
+<br>
 
-Riunisce e modernizza i programmi precedenti:
+[![Apri l'app](https://img.shields.io/badge/▶_APRI_L'APP-chopin94.github.io/fonogramma-14b8a6?style=for-the-badge)](https://chopin94.github.io/fonogramma/)
 
-| Programma originale | Cosa è stato ripreso |
+![Gratis](https://img.shields.io/badge/gratis-sempre-22c55e?style=flat-square)
+![Installabile](https://img.shields.io/badge/PWA-installabile-6366f1?style=flat-square)
+![Offline](https://img.shields.io/badge/funziona-offline-0ea5e9?style=flat-square)
+![Privacy](https://img.shields.io/badge/dati-solo_sul_tuo_dispositivo-f59e0b?style=flat-square)
+[![Licenza MIT](https://img.shields.io/badge/licenza-MIT-64748b?style=flat-square)](LICENSE)
+
+**Nessuna registrazione · nessun account · nessuna pubblicità · niente da scaricare dagli store**
+
+<br>
+
+<img src="docs/cuore.jpg" width="820" alt="Auscultazione cardiaca: fonocardiogramma con S1/S2, waterfall e metriche in tempo reale">
+
+</div>
+
+---
+
+## 🚀 Inizia in 30 secondi
+
+1. **Apri** 👉 **https://chopin94.github.io/fonogramma/**
+2. **Installa** l'app (facoltativo, ma consigliato: si apre a schermo intero e funziona offline)
+   - **Android / PC (Chrome, Edge):** menu ⋮ → **Installa app**, oppure il pulsante *Installa* nella Home
+   - **iPhone / iPad (Safari):** pulsante Condividi → **Aggiungi a Home**
+3. **Collega** il fonendoscopio, tocca **Ausculta** → **Avvia** e consenti l'uso del microfono.
+
+> 💡 **Non hai ancora il fonendoscopio collegato?** Provala subito con il **simulatore**:
+> *Ausculta → **Sorgente** (o l’icona Regolazioni, i cursori in basso a destra) → Simulatore* e scegli un caso (soffi, galoppi,
+> crepitii, sibili…).
+
+---
+
+## ✨ Cosa sa fare
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### ❤️ Cuore
+- **4 focolai + punto di Erb** su una mappa del torace, con posizione, campana o membrana e cosa ascoltare
+- Tracciato con **S1, S2, S3, S4**, click e schiocchi riconosciuti in automatico
+- **Frequenza cardiaca**, ritmo, sistole/diastole, sdoppiamento di S2
+- **Soffi**: fase (sistolico/diastolico), forma, intensità e tonalità
+- **Ciclo cardiaco medio** e qualità del segnale
+
+</td>
+<td width="50%" valign="top">
+
+### 🫁 Torace
+- **12 punti** anteriori e posteriori
+- **Waterfall** (spettrogramma) fluidissimo, fino a 500 colonne al secondo
+- **Frequenza respiratoria** e rapporto inspirazione/espirazione
+- **Crepitii** fini e grossolani, **sibili** e **ronchi**
+- Intensità del murmure e **confronto destra/sinistra**
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🎧 Ascolto e registrazione
+- **Ascolto in cuffia** con limitatore di protezione
+- **Filtri** pronti (campana, membrana, polmone…) ed **equalizzatore** a 9 bande
+- **Riduzione del rumore** adattiva
+- **“Ultimi 15 s”**: salva quello che hai *appena* ascoltato
+- Player con **loop**, **rallentatore** 0,5×–0,75× senza cambiare tono, zoom, esportazione **WAV/CSV**
+
+</td>
+<td valign="top">
+
+### 📋 Visite e referti
+- **Archivio pazienti** con anamnesi e parametri vitali
+- **Esame guidato** punto per punto, con conto alla rovescia
+- Reperti precompilati dall'analisi (Levine, forma, timbro, irradiazione…)
+- **Referto stampabile / PDF**
+- **Backup** su file da spostare fra i tuoi dispositivi
+
+</td>
+</tr>
+</table>
+
+<div align="center">
+<img src="docs/torace.jpg" width="560" alt="Auscultazione toracica con crepitii evidenziati sul waterfall">
+&nbsp;
+<img src="docs/cellulare.jpg" width="200" alt="Fonogramma sul cellulare">
+</div>
+
+---
+
+## 🩺 Cosa ti serve
+
+| | |
 |---|---|
-| `fonocardiogrammaPCG` (PyQt) | filtri HP/LP Butterworth a pendenza variabile, EQ parametrico a 9 bande (+ import di `eq_preset.json`), inviluppo di Shannon, picchi MAD, classificazione S1/S2/S3/S4, sdoppiamento di S2, energie, sospetto soffio, SQI, waterfall, Holter WAV → tabella battiti/CSV, PDF, anagrafica |
-| `cardiogramma` v1–v3 | HRV (SDNN, RMSSD, pNN50), sistole/diastole, qualità del segnale (SNR in banda, centroide) |
-| `Cardiogram94` | periodicità per autocorrelazione, registrazione continua e a frammenti |
-| `PCGdroid` (React Native) | Web Audio senza AGC/eco/soppressione rumore, struttura a moduli, referto nel browser |
+| **Fonendoscopio con uscita jack** | Un fonendoscopio elettronico o un microfono da fonendoscopio con cavo jack da 3,5 mm |
+| **Telefono o PC** | Chrome, Edge o Safari recenti. Funziona su Android, iPhone, Windows, macOS e Linux |
+| **Adattatore (se serve)** | Se il telefono non ha il jack: adattatore **USB-C → jack con ingresso microfono**. Se il cavo ha 3 contatti (TRS) e il telefono vuole quello da 4 (TRRS), usa uno sdoppiatore cuffie/microfono |
+| **Cuffie** *(consigliate)* | Per ascoltare senza il fischio di ritorno dell'altoparlante |
 
-## Funzioni
+---
 
-- **Ausculta cuore**: 4 focolai + punto di Erb su mappa del torace, con posizione, uso di
-  campana/membrana, manovre e cosa ascoltare; filtro consigliato applicato automaticamente.
-  Tracciato con S1/S2/S3/S4/click/schiocco, sistole evidenziata, inviluppo, ciclo medio.
-  Metriche live: FC, ritmo, sistole/diastole, S1/S2, sdoppiamento di S2, toni aggiunti,
-  soffio (fase, forma, intensità relativa, tonalità), qualità del segnale.
-- **Ausculta torace**: 12 punti anteriori/posteriori, waterfall fino a 500 colonne/s e 768
-  righe, frequenza respiratoria, I:E indicativo, crepitii fini/grossolani (IDW, 2CD, fase),
-  sibili e ronchi (tracce tonali, polifonia), intensità del murmure e simmetria dx/sx.
-- **Registrazione e loop**: registra, oppure salva gli **ultimi N secondi già ascoltati**
-  (buffer ad anello); player con loop senza interruzioni (tutto, selezione, 1 o 3 cicli
-  cardiaci), rallentatore 0,75×/0,5× a intonazione costante, filtro di ascolto a scelta,
-  zoom, tabella battiti/eventi, spettrogramma medio del ciclo, esportazione WAV/CSV.
-- **Visita**: anamnesi, parametri vitali, **esame guidato** punto per punto, reperti
-  (Levine, forma, timbro, irradiazione…), precompilazione dall'analisi, confronto fra
-  focolai (punto di massima intensità del soffio), conclusioni, **referto stampabile/PDF**.
-- **Ascolto in cuffia** con limitatore di protezione, riduzione rumore adattiva (cuore),
-  simulatore di casi clinici per prova e didattica, lettura di file WAV/MP3 come sorgente.
-- **Offline-first**: tutto resta sul dispositivo (IndexedDB); se l'app è servita dal
-  proprio server di casa si sincronizza fra cellulare e PC, altrimenti funziona in
-  modalità *solo dispositivo* (riconosciuta automaticamente) con backup su file.
+## 📖 Guida rapida
 
-## Architettura
+### 1 · Auscultazione libera
+1. **Ausculta** → scegli **Cuore** o **Torace** in alto.
+2. Tocca il nome del **punto** (es. *Focolaio aortico*) per sceglierlo sulla mappa: il filtro giusto si imposta da solo.
+3. **Avvia**. In alto vedi il tracciato, sotto il waterfall e a destra (o sotto, sul telefono) le misure.
+4. **Registra** per salvare, oppure **Ultimi 15 s** per tenere quello che hai appena sentito.
 
-```
-Telefono / PC (browser)                                    PC di casa (Docker, /home/fonogramma)
-┌───────────────────────────────────────────────┐          ┌─────────────────────────────────┐
-│ jack → getUserMedia → filtri (IIRFilterNode)   │  HTTPS   │ caddy  :443  certificato locale │
-│   → AudioWorklet → worker real-time            │ ───────► │   ├─ /        file della PWA    │
-│        (STFT waterfall, min/max, buffer anello)│          │   └─ /api/*   → app (FastAPI)   │
-│   → worker analisi (S1–S4, soffi, crepitii…)   │          │ app: SQLite + file WAV in data/ │
-│ IndexedDB ⇄ sincronizzazione (PIN)             │          └─────────────────────────────────┘
-└───────────────────────────────────────────────┘
-```
+### 2 · Visita completa
+1. **Home → Nuova visita** e scegli o crea il paziente.
+2. Compila anamnesi e parametri vitali.
+3. **Esame guidato**: l'app ti porta punto per punto (cuore e torace), registra e analizza ogni punto.
+4. Controlla i reperti proposti, aggiungi le tue conclusioni e apri il **Referto** → *Stampa / PDF*.
 
-- `web/` PWA senza dipendenze esterne (moduli ES): `js/dsp` algoritmi, `js/audio` motore,
-  worklet, player, `js/workers` elaborazione in background, `js/views` schermate.
-- `server/main.py` API di sincronizzazione (last-write-wins), audio, backup zip.
-- `Caddyfile` HTTPS con CA interna (necessario per microfono e installazione PWA).
+### 3 · Riascoltare una registrazione
+Apri una registrazione dall'**Archivio**: puoi metterla in **loop** (tutta, una selezione o 1–3 cicli
+cardiaci), **rallentarla**, cambiare filtro, fare zoom e leggere la tabella dei battiti e degli eventi.
 
-## Pubblicazione su GitHub Pages
+### 4 · Regolazioni utili
+L’icona **Regolazioni** (i cursori in basso a destra) nella schermata di auscultazione apre sorgente (fonendoscopio, simulatore o file
+WAV/MP3), guadagno, canale sinistro/destro, filtri, equalizzatore e dettaglio del waterfall.
 
-Il workflow `.github/workflows/pages.yml` pubblica la cartella `web/` a ogni push su
-`main` (in *Settings → Pages* la sorgente deve essere **GitHub Actions**). Non serve
-alcuna compilazione: è HTML/JS/CSS puro.
+---
 
-## Server di casa (opzionale, sincronizzazione)
+## 🔒 I tuoi dati restano tuoi
 
-Da Git Bash su Windows (serve l'accesso SSH al PC con Docker, es. `utente@192.168.1.10`):
+- Pazienti, visite e registrazioni sono salvati **solo nel browser del tuo dispositivo**.
+- **Niente server, niente account, niente cookie di tracciamento, niente statistiche.** L'audio non lascia mai il telefono.
+- Per conservare i dati o spostarli su un altro dispositivo usa **Impostazioni → Esporta backup** e poi **Importa backup** sull'altro.
+- ⚠️ Se cancelli i dati del browser o disinstalli l'app, l'archivio sparisce: **fai un backup ogni tanto**. Il file contiene dati sanitari, quindi custodiscilo bene.
+- Consiglio: in *Impostazioni → Archivio* tocca **Chiedi archiviazione persistente**, così il browser non libera spazio da solo.
 
-```bash
-./deploy.sh utente@192.168.1.10
-```
+---
 
-Lo script crea `/home/fonogramma`, copia i file e lancia `install.sh`, che:
-- crea `.env` (IP, porte 80/443 o 8080/8443 se occupate, **PIN** casuale);
-- avvia `docker compose` (container `app` e `caddy`), dati in `/home/fonogramma/data`;
-- stampa indirizzo, link del certificato e PIN.
+## ❓ Problemi comuni
 
-Aggiornare: rilanciare `./deploy.sh` (i dati e il PIN restano; i dispositivi ricevono la
-nuova versione da soli).
+<details>
+<summary><b>Non sento nulla o il tracciato è piatto</b></summary>
 
-### Primo accesso da ogni dispositivo
-1. Apri `http://<ip-del-server>/ca.crt` e installa il certificato come **autorità (CA)**
-   (istruzioni dettagliate in *Impostazioni → Certificato HTTPS*), oppure usa un nome
-   Tailscale `*.ts.net`, che ha già un certificato valido.
-2. Apri `https://<ip-del-server>/` → menu del browser → **Installa app**.
-3. *Impostazioni → Server di casa*: inserisci il PIN mostrato dall'installazione.
+- Controlla in *Impostazioni → Ingresso audio* che sia scelto il dispositivo giusto (tocca *Mostra i nomi degli ingressi*).
+- Molti cavi hanno il segnale su un solo lato: prova **Canale → Sinistro** o **Destro**.
+- Sul telefono serve un ingresso **microfono** (TRRS o adattatore USB-C con microfono), non un'uscita cuffie normale.
+- Alza il **guadagno** nelle regolazioni.
+</details>
 
-## Sviluppo locale
+<details>
+<summary><b>Sento un fischio</b></summary>
 
-```bash
-python server/dev.py
-```
+È il ritorno dall'altoparlante al microfono: usa le **cuffie** oppure disattiva l'ascolto (icona 🎧).
+</details>
 
-Apre API + PWA su `http://localhost:8765` (dati in `.devdata/`, esclusa da git).
-Per provare la modalità *solo dispositivo* basta servire la sola cartella `web/`,
-ad esempio `python -m http.server -d web 8000`.
-Nel browser senza fonendoscopio usa *Regolazioni → Sorgente → Simulatore*.
+<details>
+<summary><b>Il browser non chiede il permesso del microfono</b></summary>
 
-## Licenza
+Apri l'app dal link ufficiale **https://** e controlla nelle impostazioni del sito che il microfono non sia bloccato.
+</details>
 
-[MIT](LICENSE).
+<details>
+<summary><b>Come aggiorno l'app?</b></summary>
+
+Si aggiorna da sola: quando esce una nuova versione compare l'avviso *Nuova versione disponibile → Aggiorna*.
+</details>
+
+<details>
+<summary><b>Funziona senza internet?</b></summary>
+
+Sì. Dopo la prima apertura l'app resta sul dispositivo e funziona anche offline.
+</details>
+
+---
+
+> [!IMPORTANT]
+> **Fonogramma è uno strumento didattico e di supporto all'auscultazione.** Le analisi automatiche
+> sono indicative e non sostituiscono il giudizio clinico. **Non è un dispositivo medico certificato.**
+
+---
+
+<div align="center">
+
+Fatto con ❤️ in puro HTML, CSS e JavaScript: nessuna dipendenza, tutto gira nel tuo browser.<br>
+Suggerimenti e segnalazioni sono benvenuti nelle [Issues](https://github.com/chopin94/fonogramma/issues).
+
+**[▶ Apri Fonogramma](https://chopin94.github.io/fonogramma/)** · [Licenza MIT](LICENSE)
+
+</div>
