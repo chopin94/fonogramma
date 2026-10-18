@@ -1,0 +1,64 @@
+{
+	# Certificati HTTPS emessi dalla CA locale di Caddy (necessari per microfono + PWA).
+	# Caddy usa la rete dell'host: senza SNI (accesso per IP) sceglie il certificato
+	# in base all'indirizzo usato (rete di casa o Tailscale).
+	skip_install_trust
+	auto_https disable_redirects
+	http_port {$HTTP_PORT}
+	https_port {$HTTPS_PORT}
+}
+
+(app) {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "microphone=(self), camera=()"
+		-Server
+	}
+
+	handle /ca.crt {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		header Content-Disposition "attachment; filename=fonogramma-ca.crt"
+		file_server
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:{$APP_PORT}
+	}
+
+	handle {
+		root * /srv/web
+		# sempre rivalidati (ETag): gli aggiornamenti dell'app arrivano subito
+		header Cache-Control "no-cache"
+		file_server
+	}
+}
+
+# Indirizzi IP (casa, Tailscale): certificati della CA locale
+{$SITE_ADDRS} {
+	tls internal
+	import app
+}
+
+# Nome Tailscale *.ts.net: certificato pubblico (Let's Encrypt) fornito da tailscaled
+{$PUBLIC_ADDRS:http://127.0.0.1:8099} {
+	import app
+}
+
+# HTTP: solo download del certificato della CA e redirect verso HTTPS
+http://:{$HTTP_PORT} {
+	handle /ca.crt {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		header Content-Disposition "attachment; filename=fonogramma-ca.crt"
+		file_server
+	}
+	handle {
+		redir https://{host}:{$HTTPS_PORT}{uri} 302
+	}
+}

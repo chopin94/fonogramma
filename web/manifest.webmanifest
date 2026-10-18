@@ -1,0 +1,25 @@
+{
+  "name": "Fonogramma — auscultazione digitale",
+  "short_name": "Fonogramma",
+  "description": "Fonocardiogramma e auscultazione toracica con fonendoscopio collegato via jack: waterfall, analisi S1–S4, soffi, crepitii, visite e referti.",
+  "lang": "it",
+  "id": "./",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0f1c",
+  "theme_color": "#0a0f1c",
+  "categories": ["medical", "health"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Ausculta cuore", "url": "./#/live?mode=heart", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ausculta torace", "url": "./#/live?mode=lung", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Archivio pazienti", "url": "./#/patients", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

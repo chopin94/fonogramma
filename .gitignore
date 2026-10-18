@@ -1,0 +1,23 @@
+# segreti e dati (mai nel repository)
+.env
+*.env
+data/
+.devdata/
+caddy_data/
+caddy_config/
+*.sqlite
+*.sqlite3
+*.db
+*.wav
+fonogramma-backup-*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# editor / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
