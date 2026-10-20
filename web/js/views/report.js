@@ -9,6 +9,8 @@ import { renderThumb } from '../ui/charts.js';
 import { settings } from '../settings.js';
 import { heartSummaryLines, lungSummaryLines, heartFindingText, lungFindingText } from './common.js';
 
+const THUMB_SECONDS = 8; // durata mostrata nelle miniature dei tracciati
+
 export async function mount(view, [id]) {
   const visit = await repo.getVisit(id);
   if (!visit) { view.innerHTML = `<div class="page"><div class="empty">Visita non trovata.</div></div>`; return; }
@@ -79,7 +81,8 @@ export async function mount(view, [id]) {
       prog.textContent = `Preparazione tracciati ${i + 1}/${chosen.length}…`;
       try {
         const audio = await loadRecordingAudio(r);
-        const res = await analyzeSamples(audio.samples, audio.sampleRate, r.kind);
+        const shown = audio.samples.slice(0, Math.round(THUMB_SECONDS * audio.sampleRate));
+        const res = await analyzeSamples(shown, audio.sampleRate, r.kind);
         if (!alive) break;
         const h = res.heart;
         const url = renderThumb({ overview: res.overview, spec: res.spec, markers: r.kind === 'lung' ? null : { s1: h.s1, s2: h.s2, s3: h.s3, s4: h.s4, clicks: h.clicks, snaps: h.snaps }, lutName: settings.colormap });

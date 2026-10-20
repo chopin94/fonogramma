@@ -191,9 +191,12 @@ export async function mount(view, [id]) {
     }
   }
 
+  let overKey = '';
   const frame = () => {
     if (dirtyBase) { dirtyBase = false; drawBase(); }
-    drawOverlay();
+    const o = q('[data-over]');
+    const key = JSON.stringify([selection, cursor, vw, player.position(), loopMode, o.clientWidth, o.clientHeight]);
+    if (key !== overKey) { overKey = key; drawOverlay(); }
     raf = requestAnimationFrame(frame);
   };
 

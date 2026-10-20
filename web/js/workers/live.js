@@ -12,7 +12,7 @@ let analysisPort = null;
 let total = 0;
 let loop = null, loopPos = 0, loopFilled = 0;
 let rec = null;
-let lastSeg = 0;
+let lastSeg = 0, lastLungSeg = 0;
 let bucket = 48, bCount = 0, bMin = Infinity, bMax = -Infinity, bRMin = Infinity, bRMax = -Infinity;
 let levelPeak = 0, levelSq = 0, levelN = 0;
 
@@ -101,7 +101,8 @@ function onAudio(e) {
     const h = heartFE.latest(8);
     const seg = { fsRaw: fs, mode: cfg.mode, total, heart: { y: h.y, fs: heartFE.fsOut, startRaw: h.startRaw } };
     const trs = [h.y.buffer];
-    if (cfg.mode === 'lung') {
+    if (cfg.mode === 'lung' && total - lastLungSeg >= 1.0 * fs) {
+      lastLungSeg = total;
       const l = lungFE.latest(10);
       seg.lung = { y: l.y, fs: lungFE.fsOut, startRaw: l.startRaw };
       trs.push(l.y.buffer);

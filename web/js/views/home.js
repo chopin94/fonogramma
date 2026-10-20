@@ -59,10 +59,12 @@ export async function mount(view) {
   const render = async () => {
     if (!alive) return;
     const visits = await repo.recentVisits(10);
+    const patients = new Map((await repo.listPatients()).map((p) => [p.id, p]));
+    const allRecs = await repo.listRecordings();
     const rows = [];
     for (const v of visits) {
-      const p = await repo.getPatient(v.patientId);
-      const recs = await repo.listRecordings({ visitId: v.id });
+      const p = patients.get(v.patientId) || null;
+      const recs = allRecs.filter((r) => r.visitId === v.id);
       const age = ageFrom(p && p.dob);
       rows.push(`<a class="list-item" href="#/visit/${esc(v.id)}">
         ${avatarHtml(p)}
@@ -72,7 +74,7 @@ export async function mount(view) {
     }
     if (!alive || !view.querySelector('#recent')) return;
     view.querySelector('#recent').innerHTML = rows.length ? `<div class="list">${rows.join('')}</div>` : `<div class="empty">Nessuna visita ancora. Inizia con <b>Nuova visita</b> oppure con un'auscultazione rapida.</div>`;
-    const free = await repo.listRecordings({ free: true });
+    const free = allRecs.filter((r) => !r.patientId);
     view.querySelector('#free-wrap').classList.toggle('hidden', !free.length);
     view.querySelector('#free').innerHTML = free.slice(0, 15).map(recordingRow).join('');
   };

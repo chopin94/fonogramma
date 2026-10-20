@@ -338,7 +338,8 @@ export async function mount(view, params, query) {
       scope.env = a.heart.env ? { data: a.heart.env, envFs: a.heart.envFs, start: a.heart.envStart } : null;
       lastHeart = a.heart;
     }
-    if (mode === 'lung' && a.lung) { lastLung = a.lung; wf.lung = a.lung; scope.lungEvents = a.lung; }
+    // l'analisi polmonare arriva un ciclo sì e uno no: si tiene l'ultima ricevuta
+    if (mode === 'lung') { if (a.lung) { lastLung = a.lung; wf.lung = a.lung; scope.lungEvents = a.lung; } }
     else { wf.lung = null; scope.lungEvents = null; }
     renderMetrics();
     drawChart();

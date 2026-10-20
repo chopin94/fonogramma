@@ -17,9 +17,11 @@ export async function mount(view) {
 
   async function load() {
     patients = await repo.listPatients();
-    for (const p of patients) {
-      const vs = await repo.listVisits(p.id);
-      meta.set(p.id, { n: vs.length, last: vs[0] ? vs[0].date : null });
+    meta.clear();
+    for (const v of await repo.recentVisits(Infinity)) { // dalla più recente
+      const m = meta.get(v.patientId);
+      if (m) m.n++;
+      else meta.set(v.patientId, { n: 1, last: v.date });
     }
     render();
     const free = await repo.listRecordings({ free: true });
