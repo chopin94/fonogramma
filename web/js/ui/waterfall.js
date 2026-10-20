@@ -2,17 +2,7 @@
 // buffer circolare su canvas fuori schermo, una colonna per ogni passo STFT,
 // livelli dB automatici, assi di frequenza lineari/logaritmici, eventi sovrapposti.
 import { getLut } from './colormaps.js';
-import { MARKER_COLORS } from './scope.js';
-
-function niceTicks(fMin, fMax, scale) {
-  if (scale === 'log') return [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000].filter((f) => f >= fMin && f <= fMax);
-  const range = fMax - fMin;
-  const steps = [25, 50, 100, 200, 250, 500, 1000, 2000];
-  const step = steps.find((s) => range / s <= 7) || 5000;
-  const out = [];
-  for (let f = Math.ceil(fMin / step) * step; f <= fMax; f += step) out.push(f);
-  return out;
-}
+import { MARKER_COLORS, fitCanvas, freqTicks, drawFreqAxis } from './canvas.js';
 
 export class Waterfall {
   constructor(canvas) {
@@ -109,11 +99,7 @@ export class Waterfall {
   }
 
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.max(10, Math.round(this.cv.clientWidth * dpr));
-    const h = Math.max(10, Math.round(this.cv.clientHeight * dpr));
-    if (this.cv.width !== w || this.cv.height !== h) { this.cv.width = w; this.cv.height = h; }
-    this.dpr = dpr;
+    this.dpr = fitCanvas(this.cv).dpr;
     this.dirty = true;
   }
 
@@ -171,19 +157,6 @@ export class Waterfall {
         }
       }
     }
-    // asse delle frequenze
-    ctx.font = `${10 * dpr}px system-ui, sans-serif`;
-    ctx.textAlign = 'left';
-    for (const f of niceTicks(this.cfg.fMin, this.cfg.fMax, this.cfg.scale)) {
-      const y = Math.round(this.yOfFreq(f, H)) + 0.5;
-      if (y < 8 * dpr || y > H - 4) continue;
-      ctx.strokeStyle = 'rgba(255,255,255,0.13)';
-      ctx.beginPath(); ctx.moveTo(34 * dpr, y); ctx.lineTo(W, y); ctx.stroke();
-      const lab = f >= 1000 ? `${f / 1000}k` : `${f}`;
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(0, y - 7 * dpr, 32 * dpr, 13 * dpr);
-      ctx.fillStyle = 'rgba(230,238,255,0.9)';
-      ctx.fillText(lab, 3 * dpr, y + 3.5 * dpr);
-    }
+    drawFreqAxis(ctx, freqTicks(this.cfg.fMin, this.cfg.fMax, this.cfg.scale), (f) => this.yOfFreq(f, H), W, H, dpr);
   }
 }

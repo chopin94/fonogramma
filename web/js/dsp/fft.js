@@ -74,15 +74,6 @@ export function hann(n) {
   return w;
 }
 
-export function blackmanHarris(n) {
-  const w = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = (2 * Math.PI * i) / n;
-    w[i] = 0.35875 - 0.48829 * Math.cos(x) + 0.14128 * Math.cos(2 * x) - 0.01168 * Math.cos(3 * x);
-  }
-  return w;
-}
-
 export function nextPow2(x) {
   let n = 1;
   while (n < x) n <<= 1;

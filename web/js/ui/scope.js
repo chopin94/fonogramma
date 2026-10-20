@@ -1,7 +1,6 @@
 // Tracciato PCG in tempo reale: min/max per millisecondo, marcatori S1–S4,
 // evidenziazione della sistole, inviluppo, scala verticale automatica.
-const COL = { s1: '#ff5d7a', s2: '#4cc9f0', s3: '#ffb547', s4: '#c77dff', clicks: '#9ef01a', snaps: '#f72585' };
-const LABEL = { s1: 'S1', s2: 'S2', s3: 'S3', s4: 'S4', clicks: 'C', snaps: 'OS' };
+import { MARKER_COLORS, MARKER_LABELS, fitCanvas, roundRect, systoles } from './canvas.js';
 
 export class Scope {
   constructor(canvas, { capacityS = 30 } = {}) {
@@ -67,11 +66,7 @@ export class Scope {
   }
 
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.max(10, Math.round(this.cv.clientWidth * dpr));
-    const h = Math.max(10, Math.round(this.cv.clientHeight * dpr));
-    if (this.cv.width !== w || this.cv.height !== h) { this.cv.width = w; this.cv.height = h; }
-    this.dpr = dpr;
+    this.dpr = fitCanvas(this.cv).dpr;
     this.dirty = true;
   }
 
@@ -109,7 +104,7 @@ export class Scope {
     const bpp = nVis / W;
     // scala automatica (picco robusto degli ultimi secondi visibili)
     let peak = 1e-6;
-    for (let b = Math.max(start, end - nVis, end - this.cap); b < end; b += 3) {
+    for (let b = Math.max(start, end - this.cap); b < end; b += 3) {
       const i = ((b % this.cap) + this.cap) % this.cap;
       const v = Math.max(Math.abs(this.mn[i]), Math.abs(this.mx[i]));
       if (v > peak) peak = v;
@@ -120,11 +115,8 @@ export class Scope {
     const yOf = (v) => H / 2 - v * yk;
 
     // sistole evidenziata (S1 → S2 successivo)
-    const s1 = this.markers.s1, s2 = this.markers.s2;
     ctx.fillStyle = 'rgba(255, 214, 102, 0.07)';
-    for (const a of s1) {
-      const b = s2.find((v) => v > a && v - a < 0.7 * this.fs);
-      if (b === undefined) continue;
+    for (const [a, b] of systoles(this.markers.s1, this.markers.s2, 0.7 * this.fs)) {
       const x0 = this.xOf(a, W), x1 = this.xOf(b, W);
       if (x1 < 0 || x0 > W) continue;
       ctx.fillRect(x0, 0, x1 - x0, H);
@@ -194,14 +186,14 @@ export class Scope {
     all.sort((p, q) => p.x - q.x);
     let lastRight = -Infinity;
     for (const { x, k } of all) {
-      const col = COL[k];
+      const col = MARKER_COLORS[k];
       ctx.strokeStyle = col;
       ctx.globalAlpha = 0.55;
       ctx.setLineDash([3 * dpr, 4 * dpr]);
       ctx.beginPath(); ctx.moveTo(x, 18 * dpr); ctx.lineTo(x, H); ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
-      const lab = LABEL[k];
+      const lab = MARKER_LABELS[k];
       const tw = ctx.measureText(lab).width + 8 * dpr;
       if (x - tw / 2 < lastRight + 2 * dpr) continue;
       lastRight = x + tw / 2;
@@ -218,15 +210,3 @@ export class Scope {
     for (let s = 1; s <= this.span; s++) ctx.fillText(`-${s} s`, W - s * pxS - 3 * dpr, H - 4 * dpr);
   }
 }
-
-export function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-export const MARKER_COLORS = COL;

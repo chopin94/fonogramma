@@ -3,13 +3,11 @@
 // Algoritmo derivato da fonocardiogrammaPCG (signal_processing.py) e Cardiogram94
 // (autocorrelazione), esteso con inviluppo d'ampiezza e analisi del ciclo medio.
 // Ingresso: segnale già filtrato 25–400 Hz e decimato (~2 kHz). Tempi restituiti in secondi.
-import { findPeaks, percentile, median, mad, mean, std, movingAverage, clusterPeaks } from './peaks.js';
+import { findPeaks, percentile, median, mad, mean, std, movingAverage, clusterPeaks, clamp01, autocorrPeak } from './peaks.js';
 import { spectralCentroid } from './fft.js';
 import { bandpassSections, filtfilt } from './biquad.js';
 
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
-let SEG_LP = 100; // passa-basso dell'inviluppo di segmentazione (Hz)
-export function _setSegLp(v) { SEG_LP = v; }
+const SEG_LP = 100; // passa-basso dell'inviluppo di segmentazione (Hz)
 
 function emptyMetrics() {
   return {
@@ -32,37 +30,14 @@ export function autocorrHR(env, envFs) {
   const m = Math.floor(env.length / d);
   if (m < fs2 * 1.5) return null;
   const y = new Float32Array(m);
-  let mu = 0;
   for (let k = 0; k < m; k++) {
     let s = 0;
     for (let j = 0; j < d; j++) s += env[k * d + j];
     y[k] = s / d;
-    mu += y[k];
   }
-  mu /= m;
-  let r0 = 0;
-  for (let k = 0; k < m; k++) { y[k] -= mu; r0 += y[k] * y[k]; }
-  if (r0 <= 1e-12) return null;
-  r0 /= m;
-  const minLag = Math.round(0.3 * fs2);
-  const maxLag = Math.min(Math.round(2.0 * fs2), m - Math.round(0.8 * fs2));
-  if (maxLag <= minLag + 2) return null;
-  const r = new Float32Array(maxLag + 2);
-  for (let L = minLag - 1; L <= maxLag + 1; L++) {
-    let s = 0;
-    for (let k = 0; k + L < m; k++) s += y[k] * y[k + L];
-    r[L] = s / (m - L) / r0;
-  }
-  let best = -1, bestL = -1;
-  for (let L = minLag; L <= maxLag; L++) {
-    if (r[L] > r[L - 1] && r[L] >= r[L + 1] && r[L] > best) { best = r[L]; bestL = L; }
-  }
-  if (bestL < 0 || best < 0.1) return null;
-  const a = r[bestL - 1], b = r[bestL], c = r[bestL + 1];
-  const den = a - 2 * b + c;
-  const off = Math.abs(den) > 1e-9 ? (0.5 * (a - c)) / den : 0;
-  const lag = (bestL + Math.max(-0.5, Math.min(0.5, off))) / fs2;
-  return { bpm: 60 / lag, strength: best };
+  const pk = autocorrPeak(y, Math.round(0.3 * fs2), Math.min(Math.round(2.0 * fs2), m - Math.round(0.8 * fs2)));
+  if (!pk || pk.strength < 0.1) return null;
+  return { bpm: 60 / (pk.lag / fs2), strength: pk.strength };
 }
 
 function width50(env, i, maxSamp) {

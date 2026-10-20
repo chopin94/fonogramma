@@ -2,7 +2,7 @@
 import { esc, fmtDateTime, patientName, ageFrom } from '../util.js';
 import * as repo from '../store/repo.js';
 import { icon } from '../ui/icons.js';
-import { startNewVisit, recordingRow } from './common.js';
+import { startNewVisit, recordingRow, avatarHtml } from './common.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -65,7 +65,7 @@ export async function mount(view) {
       const recs = await repo.listRecordings({ visitId: v.id });
       const age = ageFrom(p && p.dob);
       rows.push(`<a class="list-item" href="#/visit/${esc(v.id)}">
-        <div class="avatar">${esc(((p && p.lastName) || '?')[0])}${esc(((p && p.firstName) || '')[0] || '')}</div>
+        ${avatarHtml(p)}
         <div class="grow"><b>${esc(patientName(p))}</b>${age !== null ? ` <span class="muted small">${age} anni</span>` : ''}
           <div class="small muted">${fmtDateTime(v.date)} · ${recs.length} registrazioni${v.reason ? ` · ${esc(v.reason)}` : ''}</div></div>
         <span class="badge ${v.status === 'chiusa' ? 'ok' : 'accent'}">${esc(v.status || 'aperta')}</span>${icon('chevR')}</a>`);

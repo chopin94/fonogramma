@@ -10,7 +10,8 @@ import { loadRecordingAudio, loadRecordingBlob } from '../store/audio.js';
 import { analyzeSamples, summarize } from '../audio/analyzer.js';
 import { LoopPlayer } from '../audio/player.js';
 import { encodeWav } from '../audio/wav.js';
-import { drawWaveView, drawSpecView, buildSpecImage, specLevels, drawEnsemble, drawProfile, drawCycleSpec, drawResp, fitCanvas } from '../ui/charts.js';
+import { drawWaveView, drawSpecView, buildSpecImage, specLevels, drawEnsemble, drawProfile, drawCycleSpec, drawResp } from '../ui/charts.js';
+import { fitCanvas } from '../ui/canvas.js';
 import { icon } from '../ui/icons.js';
 import { heartSummaryLines, lungSummaryLines, qualityBadge, isHeartAbnormal, isLungAbnormal } from './common.js';
 
@@ -74,7 +75,7 @@ export async function mount(view, [id]) {
   </div>`;
   const q = (s) => view.querySelector(s);
 
-  let audio = null, res = null, specImg = null, duration = rec.duration || 0;
+  let audio = null, res = null, summary = null, specImg = null, duration = rec.duration || 0;
   let vw = [0, Math.min(duration || 10, 10)];
   let selection = null, cursor = 0;
   let loopOn = true, loopMode = 'all', speed = 1, playPreset = recFilter ? REC_FILTER : rec.preset || 'campana', volumeDb = settings.volumeDb;
@@ -102,10 +103,10 @@ export async function mount(view, [id]) {
     const [lo, hi] = specLevels(res.spec.cols);
     specImg = buildSpecImage(res.spec, settings.colormap, lo, hi);
     q('[data-loading]').classList.add('hidden');
-    const sum = summarize(res, kind);
-    if (JSON.stringify(sum) !== JSON.stringify(rec.analysis || {})) {
-      rec.analysis = sum;
-      rec.abnormal = kind === 'lung' ? isLungAbnormal(sum.lung) : isHeartAbnormal(sum.heart);
+    summary = summarize(res, kind);
+    if (JSON.stringify(summary) !== JSON.stringify(rec.analysis || {})) {
+      rec.analysis = summary;
+      rec.abnormal = kind === 'lung' ? isLungAbnormal(summary.lung) : isHeartAbnormal(summary.heart);
       rec = await repo.saveRecording(rec);
     }
     renderSummary();
@@ -201,8 +202,7 @@ export async function mount(view, [id]) {
     const box = q('[data-summary]');
     const h = res.heart && res.heart.metrics;
     const l = res.lung && res.lung.metrics;
-    const sum = summarize(res, rec.kind);
-    const lines = rec.kind === 'lung' ? lungSummaryLines(sum.lung).concat(heartSummaryLines(sum.heart).slice(0, 1)) : heartSummaryLines(sum.heart);
+    const lines = rec.kind === 'lung' ? lungSummaryLines(summary.lung).concat(heartSummaryLines(summary.heart).slice(0, 1)) : heartSummaryLines(summary.heart);
     const kv = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
     box.innerHTML = `<div class="row between"><b>Analisi automatica</b>${qualityBadge(rec.kind === 'lung' ? l && l.sqi : h && h.sqi)}</div>
       <div class="seg" data-kind><button data-v="heart">${icon('heart', 'sm')} Cuore</button><button data-v="lung">${icon('lungs', 'sm')} Torace</button></div>

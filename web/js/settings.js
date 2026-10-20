@@ -64,21 +64,14 @@ function load() {
 }
 
 export const settings = load();
-const listeners = new Set();
 
 export function saveSettings() {
   try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch {}
-  listeners.forEach((fn) => fn(settings));
 }
 
 export function updateSettings(patch) {
   Object.assign(settings, merge(settings, patch));
   saveSettings();
-}
-
-export function onSettings(fn) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
 }
 
 export function wfConfig(mode) {

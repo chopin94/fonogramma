@@ -1,16 +1,7 @@
 // Grafici statici: ciclo cardiaco medio, profili, inviluppo respiratorio,
 // vista completa di una registrazione (tracciato + spettrogramma) con selezione e cursore.
 import { getLut } from './colormaps.js';
-import { MARKER_COLORS, roundRect } from './scope.js';
-
-export function fitCanvas(cv) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const W = Math.max(10, Math.round(cv.clientWidth * dpr));
-  const H = Math.max(10, Math.round(cv.clientHeight * dpr));
-  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-  const ctx = cv.getContext('2d');
-  return { W, H, dpr, ctx };
-}
+import { MARKER_COLORS, MARKER_LABELS, fitCanvas, roundRect, systoles, freqTicks, drawFreqAxis } from './canvas.js';
 
 function placeholder(ctx, W, H, dpr, msg) {
   ctx.fillStyle = 'rgba(200,210,235,0.55)';
@@ -161,32 +152,6 @@ export function buildSpecImage(spec, lutName, dbMin, dbMax) {
   return c;
 }
 
-function freqTicks(fMin, fMax) {
-  const range = fMax - fMin;
-  const step = [50, 100, 200, 250, 500, 1000].find((s) => range / s <= 6) || 1000;
-  const out = [];
-  for (let f = Math.ceil(fMin / step) * step; f <= fMax; f += step) out.push(f);
-  return out;
-}
-
-function overlays(ctx, W, H, dpr, view, o) {
-  const [a, b] = view;
-  const x = (t) => ((t - a) / (b - a)) * W;
-  if (o.selection) {
-    const [s0, s1] = o.selection;
-    ctx.fillStyle = 'rgba(45,212,191,0.16)';
-    ctx.fillRect(x(s0), 0, x(s1) - x(s0), H);
-    ctx.strokeStyle = 'rgba(45,212,191,0.9)';
-    ctx.lineWidth = 1.5 * dpr;
-    ctx.beginPath(); ctx.moveTo(x(s0), 0); ctx.lineTo(x(s0), H); ctx.moveTo(x(s1), 0); ctx.lineTo(x(s1), H); ctx.stroke();
-  }
-  if (o.playhead !== null && o.playhead !== undefined) {
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5 * dpr;
-    ctx.beginPath(); ctx.moveTo(x(o.playhead), 0); ctx.lineTo(x(o.playhead), H); ctx.stroke();
-  }
-}
-
 export function drawWaveView(cv, ov, view, o = {}) {
   const { W, H, dpr, ctx } = fitCanvas(cv);
   ctx.fillStyle = '#070b14';
@@ -202,9 +167,8 @@ export function drawWaveView(cv, ov, view, o = {}) {
   // sistole
   if (o.markers && o.markers.s1) {
     ctx.fillStyle = 'rgba(255,214,102,0.08)';
-    for (const s of o.markers.s1) {
-      const e = o.markers.s2.find((v) => v > s && v - s < 0.7);
-      if (e === undefined || e < a || s > b) continue;
+    for (const [s, e] of systoles(o.markers.s1, o.markers.s2, 0.7)) {
+      if (e < a || s > b) continue;
       ctx.fillRect(((s - a) / tSpan) * W, 0, ((e - s) / tSpan) * W, H);
     }
   }
@@ -222,8 +186,7 @@ export function drawWaveView(cv, ov, view, o = {}) {
   }
   ctx.stroke();
   if (o.markers) {
-    const lab = { s1: 'S1', s2: 'S2', s3: 'S3', s4: 'S4', clicks: 'C', snaps: 'OS' };
-    for (const k of Object.keys(lab)) {
+    for (const k of Object.keys(MARKER_LABELS)) {
       for (const t of o.markers[k] || []) {
         if (t < a || t > b) continue;
         const xx = ((t - a) / tSpan) * W;
@@ -233,7 +196,7 @@ export function drawWaveView(cv, ov, view, o = {}) {
         ctx.beginPath(); ctx.moveTo(xx, 18 * dpr); ctx.lineTo(xx, H); ctx.stroke();
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
-        if (tSpan < 25) badge(ctx, xx, 2 * dpr, lab[k], MARKER_COLORS[k], dpr);
+        if (tSpan < 25) badge(ctx, xx, 2 * dpr, MARKER_LABELS[k], MARKER_COLORS[k], dpr);
       }
     }
   }
@@ -254,7 +217,6 @@ export function drawWaveView(cv, ov, view, o = {}) {
     ctx.fillRect(xx, H - 4 * dpr, 1, 4 * dpr);
     ctx.fillText(step < 1 ? t.toFixed(1) : `${Math.round(t)} s`, xx, H - 6 * dpr);
   }
-  overlays(ctx, W, H, dpr, view, o);
 }
 
 export function drawSpecView(cv, img, spec, view, o = {}) {
@@ -281,19 +243,7 @@ export function drawSpecView(cv, img, spec, view, o = {}) {
       ctx.setLineDash([]);
     }
   }
-  ctx.font = `${10 * dpr}px system-ui, sans-serif`;
-  ctx.textAlign = 'left';
-  for (const f of freqTicks(spec.fMin, spec.fMax)) {
-    const yy = Math.round(fy(f)) + 0.5;
-    if (yy < 8 * dpr || yy > H - 4) continue;
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.beginPath(); ctx.moveTo(32 * dpr, yy); ctx.lineTo(W, yy); ctx.stroke();
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, yy - 7 * dpr, 30 * dpr, 13 * dpr);
-    ctx.fillStyle = 'rgba(230,238,255,0.9)';
-    ctx.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, 3 * dpr, yy + 3.5 * dpr);
-  }
-  overlays(ctx, W, H, dpr, view, o);
+  drawFreqAxis(ctx, freqTicks(spec.fMin, spec.fMax), fy, W, H, dpr);
 }
 
 // Spettrogramma medio del ciclo (sincronizzato su S1).
@@ -314,16 +264,7 @@ export function drawCycleSpec(cv, cyc, lutName) {
   badge(ctx, x(0), 2 * dpr, 'S1', MARKER_COLORS.s1, dpr);
   badge(ctx, x(cyc.s2), 2 * dpr, 'S2', MARKER_COLORS.s2, dpr);
   const fy = (f) => H - ((f - cyc.fMin) / (cyc.fMax - cyc.fMin)) * H;
-  ctx.font = `${10 * dpr}px system-ui, sans-serif`;
-  ctx.textAlign = 'left';
-  for (const f of freqTicks(cyc.fMin, cyc.fMax)) {
-    const yy = fy(f);
-    if (yy < 10 * dpr || yy > H - 4) continue;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, yy - 7 * dpr, 30 * dpr, 13 * dpr);
-    ctx.fillStyle = 'rgba(230,238,255,0.9)';
-    ctx.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, 3 * dpr, yy + 3.5 * dpr);
-  }
+  drawFreqAxis(ctx, freqTicks(cyc.fMin, cyc.fMax), fy, W, H, dpr, { grid: false });
 }
 
 // Immagine riassuntiva (PNG) per il referto.

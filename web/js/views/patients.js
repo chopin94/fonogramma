@@ -2,7 +2,7 @@
 import { esc, ageFrom, patientName, fmtDate } from '../util.js';
 import * as repo from '../store/repo.js';
 import { icon } from '../ui/icons.js';
-import { openPatientEditor, recordingRow } from './common.js';
+import { openPatientEditor, recordingRow, avatarHtml, patientMatches } from './common.js';
 
 export async function mount(view) {
   view.innerHTML = `<div class="page">
@@ -29,13 +29,12 @@ export async function mount(view) {
 
   function render() {
     if (!q('[data-q]')) return;
-    const s = q('[data-q]').value.trim().toLowerCase();
-    const list = patients.filter((p) => !s || patientName(p).toLowerCase().includes(s) || (p.code || '').toLowerCase().includes(s));
+    const list = patients.filter((p) => patientMatches(p, q('[data-q]').value));
     q('[data-list]').innerHTML = list.length ? list.map((p) => {
       const m = meta.get(p.id) || {};
       const age = ageFrom(p.dob);
       return `<a class="list-item" href="#/patient/${esc(p.id)}">
-        <div class="avatar">${esc((p.lastName || '?')[0])}${esc((p.firstName || '')[0] || '')}</div>
+        ${avatarHtml(p)}
         <div class="grow"><b>${esc(patientName(p))}</b>
           <div class="small muted">${age !== null ? `${age} anni · ` : ''}${esc(p.sex || '')}${p.code ? ` · ${esc(p.code)}` : ''} · ${m.n || 0} visite${m.last ? ` · ultima ${fmtDate(m.last)}` : ''}</div></div>
         ${icon('chevR')}</a>`;

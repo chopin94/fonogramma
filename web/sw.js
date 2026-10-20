@@ -34,6 +34,7 @@ const ASSETS = [
     'js/store/db.js',
     'js/store/repo.js',
     'js/ui/bodymap.js',
+    'js/ui/canvas.js',
     'js/ui/charts.js',
     'js/ui/colormaps.js',
     'js/ui/eqeditor.js',

@@ -1,10 +1,10 @@
-// Equalizzatore parametrico a 9 bande (come nel programma Python) con curva di
-// risposta trascinabile, import di eq_preset.json e salvataggio di preset personali.
+// Equalizzatore parametrico a 9 bande con curva di risposta trascinabile, import di
+// preset in JSON e salvataggio di preset personali.
 import { el, esc, sheet, toast, uuid } from '../util.js';
 import { sectionsForBands, responseDb } from '../dsp/biquad.js';
-import { EQ_TEMPLATE, fromPythonEq } from '../presets.js';
+import { EQ_TEMPLATE, fromEqJson } from '../presets.js';
 import { settings, saveSettings } from '../settings.js';
-import { fitCanvas } from './charts.js';
+import { fitCanvas } from './canvas.js';
 
 const TYPES = [
   ['highpass', 'Passa-alto'], ['lowshelf', 'Shelf basso'], ['peaking', 'Picco'], ['highshelf', 'Shelf alto'], ['lowpass', 'Passa-basso'], ['notch', 'Notch'],
@@ -19,7 +19,7 @@ export function openEqEditor({ bands, fs = 48000, onChange, title = 'Equalizzato
     <div class="col" data-rows></div>
     <div class="row">
       <button class="btn sm" data-tpl>Schema a 9 bande</button>
-      <label class="btn sm">Importa eq_preset.json<input type="file" accept=".json,application/json" hidden data-imp></label>
+      <label class="btn sm">Importa preset EQ (JSON)<input type="file" accept=".json,application/json" hidden data-imp></label>
       <span class="grow"></span>
       <input type="text" placeholder="Nome preset" data-name style="max-width:180px">
       <button class="btn sm primary" data-save>Salva preset</button>
@@ -135,9 +135,9 @@ export function openEqEditor({ bands, fs = 48000, onChange, title = 'Equalizzato
     const f = e.target.files[0];
     if (!f) return;
     try {
-      eq = fromPythonEq(JSON.parse(await f.text()));
+      eq = fromEqJson(JSON.parse(await f.text()));
       renderRows(); draw(); emit();
-      toast('Preset del programma Python importato');
+      toast('Preset EQ importato');
     } catch (err) { toast('File non valido: ' + err.message, { type: 'error' }); }
   };
   body.querySelector('[data-save]').onclick = () => {

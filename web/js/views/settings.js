@@ -95,7 +95,7 @@ export async function mount(view) {
     const box = q('[data-presets]');
     const list = settings.customPresets || [];
     box.innerHTML = `<h3>${icon('sliders')} Preset di filtro personali</h3>
-      ${list.length ? `<div class="list">${list.map((p) => `<div class="list-item"><div class="grow"><b>${esc(p.name)}</b><div class="small muted">${p.bands.filter((b) => b.enabled !== false).length} bande attive</div></div><button class="icon-btn" data-del="${esc(p.id)}">${icon('trash', 'sm')}</button></div>`).join('')}</div>` : '<div class="small muted">Nessun preset personale. Creane uno con l\'equalizzatore (puoi importare il tuo eq_preset.json).</div>'}
+      ${list.length ? `<div class="list">${list.map((p) => `<div class="list-item"><div class="grow"><b>${esc(p.name)}</b><div class="small muted">${p.bands.filter((b) => b.enabled !== false).length} bande attive</div></div><button class="icon-btn" data-del="${esc(p.id)}">${icon('trash', 'sm')}</button></div>`).join('')}</div>` : '<div class="small muted">Nessun preset personale. Creane uno con l\'equalizzatore (puoi anche importare un preset EQ in JSON).</div>'}
       <button class="btn" data-neweq>${icon('plus', 'sm')} Nuovo preset dall'equalizzatore</button>`;
     box.querySelectorAll('[data-del]').forEach((b) => {
       b.onclick = async () => {

@@ -120,7 +120,6 @@ main#view { overflow: auto; min-height: 0; position: relative; grid-row: 2; }
 .card h3 { display: flex; align-items: center; gap: .45rem; }
 .grid { display: grid; gap: 12px; }
 .grid.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.grid.three { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .section-title { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 8px; }
 .section-title h2 { margin: 0; }
 
@@ -271,7 +270,6 @@ label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .metric.big .v { font-size: 1.9rem; color: var(--s1); }
 .metric.alert { border-color: color-mix(in srgb, var(--warn) 60%, transparent); }
 .metric.alert .v { color: var(--warn); }
-.metric.good .v { color: var(--ok); }
 .sqi-bar { height: 5px; border-radius: 9px; background: var(--card2); margin-top: 5px; overflow: hidden; }
 .sqi-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--bad), var(--warn), var(--ok)); }
 .side-extra { display: none; }

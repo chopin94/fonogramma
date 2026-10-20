@@ -1,6 +1,6 @@
 // STFT a flusso continuo per il waterfall, con mappatura delle frequenze su righe
 // di visualizzazione (scala lineare o logaritmica, max-pooling dei bin per il dettaglio).
-import { FFT, hann, blackmanHarris } from './fft.js';
+import { FFT, hann } from './fft.js';
 
 export function buildRowMap(rows, fMin, fMax, scale, df, nBins) {
   const lo = new Int32Array(rows), hi = new Int32Array(rows), fr = new Float32Array(rows);
@@ -40,13 +40,13 @@ export function mapColumn(mag, map, norm, out, offset) {
 }
 
 export class StftStream {
-  constructor({ fs, fftSize = 2048, hop = 256, rows = 256, fMin = 20, fMax = 1000, scale = 'lin', window = 'hann' }) {
+  constructor({ fs, fftSize = 2048, hop = 256, rows = 256, fMin = 20, fMax = 1000, scale = 'lin' }) {
     this.fs = fs;
     this.n = fftSize;
     this.hop = Math.max(16, Math.round(hop));
     this.rows = rows;
     this.fft = new FFT(fftSize);
-    this.win = window === 'bh' ? blackmanHarris(fftSize) : hann(fftSize);
+    this.win = hann(fftSize);
     let s = 0;
     for (let i = 0; i < fftSize; i++) s += this.win[i];
     this.norm = 2 / s; // 0 dB = sinusoide a fondo scala

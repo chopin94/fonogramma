@@ -107,6 +107,16 @@ export async function mount(view, params, query) {
 
   // ---------- configurazione ----------
   const span = () => (mode === 'lung' ? settings.spanLung : settings.spanHeart);
+  // configurazione del worker in tempo reale (modalità, anello "ultimi N s", waterfall)
+  function liveConfig() {
+    const w = wfConfig(mode);
+    return {
+      mode, wfSource: settings.wfSource, loopSeconds: Math.max(settings.loopSeconds, settings.grabSeconds + 2),
+      wf: { fftSize: w.fftSize, hop: w.hop, rows: w.rows, fMin: w.fMin, fMax: w.fMax, scale: w.scale },
+    };
+  }
+  const respData = (L) => (L ? { resp: L.resp, respFs: L.respFs, respT0: L.respT0, breaths: L.breathsT, crackles: L.crackles, wheezes: L.wheezes } : null);
+
   function reconfigure() {
     const w = wfConfig(mode);
     scope.span = span();
@@ -117,10 +127,7 @@ export async function mount(view, params, query) {
     wf.auto = settings.autoLevels;
     wf.smooth = settings.smoothWaterfall;
     if (!settings.autoLevels) wf.setLevels(...settings.dbRange[mode]);
-    engine.configure({
-      mode, wfSource: settings.wfSource, loopSeconds: Math.max(settings.loopSeconds, settings.grabSeconds + 2),
-      wf: { fftSize: w.fftSize, hop: w.hop, rows: w.rows, fMin: w.fMin, fMax: w.fMax, scale: w.scale },
-    });
+    engine.configure(liveConfig());
     updateTags();
   }
 
@@ -266,9 +273,8 @@ export async function mount(view, params, query) {
       drawEnsemble(cv, lastHeart && lastHeart.ensemble);
       q('[data-chartsub]').textContent = lastHeart && lastHeart.ensemble ? 'inviluppo d\'ampiezza, ultimi 8 s' : '';
     } else {
-      const L = lastLung;
-      drawResp(cv, L ? { resp: L.resp, respFs: L.respFs, respT0: L.respT0, breaths: L.breathsT, crackles: L.crackles, wheezes: L.wheezes } : null);
-      q('[data-chartsub]').textContent = L ? 'ultimi 10 s · ▲ respiri · | crepitii' : '';
+      drawResp(cv, respData(lastLung));
+      q('[data-chartsub]').textContent = lastLung ? 'ultimi 10 s · ▲ respiri · | crepitii' : '';
     }
   }
 
@@ -348,13 +354,12 @@ export async function mount(view, params, query) {
     starting = true;
     renderButtons();
     try {
-      const w = wfConfig(mode);
       const source = settings.source === 'file' && !fileSource ? 'mic' : settings.source;
       await engine.start({
         source, deviceId: settings.deviceId, channel: settings.inputChannel, demoId: settings.demoId, file: fileSource,
         bands, gainDb: settings.gainDb, monitor: settings.monitor, volumeDb: settings.volumeDb,
         denoise: settings.denoise && mode === 'heart', denoiseStrength: settings.denoiseStrength,
-        config: { mode, wfSource: settings.wfSource, loopSeconds: Math.max(settings.loopSeconds, settings.grabSeconds + 2), wf: { fftSize: w.fftSize, hop: w.hop, rows: w.rows, fMin: w.fMin, fMax: w.fMax, scale: w.scale } },
+        config: liveConfig(),
       });
       running = true;
       scope.setRate(engine.sampleRate, Math.round(engine.sampleRate / 1000));
@@ -716,7 +721,7 @@ export async function mount(view, params, query) {
     requestAnimationFrame(() => {
       const cv = body.querySelector('[data-chart2]');
       if (mode === 'heart') drawEnsemble(cv, lastHeart && lastHeart.ensemble);
-      else drawResp(cv, lastLung ? { resp: lastLung.resp, respFs: lastLung.respFs, respT0: lastLung.respT0, breaths: lastLung.breathsT, crackles: lastLung.crackles, wheezes: lastLung.wheezes } : null);
+      else drawResp(cv, respData(lastLung));
     });
   };
 

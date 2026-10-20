@@ -3,9 +3,8 @@
 // (tracce tonali nello spettrogramma), intensità del murmure vescicolare.
 // Ingresso: segnale filtrato 100–2500 Hz e decimato (~8 kHz). Tempi in secondi.
 import { getFFT, hann } from './fft.js';
-import { findPeaks, median, movingAverage, movingMedian, percentile, mean, std } from './peaks.js';
+import { findPeaks, median, movingAverage, movingMedian, percentile, mean, std, clamp01, autocorrPeak } from './peaks.js';
 
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const odd = (v) => (v % 2 ? v : v + 1);
 
 function emptyMetrics() {
@@ -145,22 +144,18 @@ export function analyzeLung(y, fs, { heartTimes = [] } = {}) {
   // scarta le armoniche (f ≈ k·f0 sovrapposte nel tempo a un evento più grave)
   const isHarm = (e) => events.some((g) => g !== e && g.f < e.f && Math.min(e.t1, g.t1) - Math.max(e.t0, g.t0) > 0.5 * e.dur &&
     Math.abs(e.f / g.f - Math.round(e.f / g.f)) < 0.08 * Math.round(e.f / g.f) && Math.round(e.f / g.f) >= 2);
-  const fund = events.filter((e) => !isHarm(e));
-  for (const e of fund) e.type = e.f < 300 ? 'ronco' : 'sibilo';
-  events.length = 0;
-  events.push(...fund);
-  events.sort((a, b) => a.t0 - b.t0);
-  res.wheezes = events;
-  const wh = events.filter((e) => e.type === 'sibilo');
+  const fund = events.filter((e) => !isHarm(e)).sort((a, b) => a.t0 - b.t0);
+  res.wheezes = fund;
+  const wh = fund.filter((e) => e.type === 'sibilo');
   met.wheezes = wh.length;
-  met.rhonchi = events.length - wh.length;
+  met.rhonchi = fund.length - wh.length;
   const covered = new Uint8Array(F);
-  for (const e of events) {
+  for (const e of fund) {
     for (let f = Math.max(0, Math.floor((e.t0 - tOff) * fr)); f < Math.min(F, Math.ceil((e.t1 - tOff) * fr)); f++) covered[f] = 1;
   }
   met.wheezeDurPct = (100 * covered.reduce((a, b) => a + b, 0)) / F;
   met.wheezeFreq = wh.length ? median(wh.map((e) => e.f)) : null;
-  met.polyphonic = events.some((a, i) => events.some((b, j) => j !== i && b.t0 < a.t1 && a.t0 < b.t1 && Math.abs(a.f - b.f) > 60));
+  met.polyphonic = fund.some((a, i) => fund.some((b, j) => j !== i && b.t0 < a.t1 && a.t0 < b.t1 && Math.abs(a.f - b.f) > 60));
 
   // 4) Crepitii: transitori esplosivi brevi rispetto al fondo locale (mediana dell'RMS
   //    su ±100 ms) + morfologia dell'onda (IDW, 2CD) per distinguere fini/grossolani
@@ -250,23 +245,7 @@ function crackleShape(y, fs, at) {
 }
 
 function respAutocorr(resp, fr) {
-  const m = resp.length;
-  const mu = mean(resp);
-  const y = Float32Array.from(resp, (v) => v - mu);
-  let r0 = 0;
-  for (let k = 0; k < m; k++) r0 += y[k] * y[k];
-  if (r0 <= 0) return null;
-  r0 /= m;
-  const minL = Math.round(1.5 * fr), maxL = Math.min(Math.round(10 * fr), Math.floor(m * 0.6));
-  if (maxL <= minL + 2) return null;
-  let best = -1, bestL = -1, prev = -Infinity, prev2 = -Infinity;
-  for (let L = minL - 1; L <= maxL; L++) {
-    let s = 0;
-    for (let k = 0; k + L < m; k++) s += y[k] * y[k + L];
-    const v = s / (m - L) / r0;
-    if (prev > prev2 && prev >= v && prev > best && L - 1 >= minL) { best = prev; bestL = L - 1; }
-    prev2 = prev; prev = v;
-  }
-  if (bestL < 0 || best < 0.2) return null;
-  return { rr: (60 * fr) / bestL, strength: best };
+  const pk = autocorrPeak(resp, Math.round(1.5 * fr), Math.min(Math.round(10 * fr), Math.floor(resp.length * 0.6)));
+  if (!pk || pk.strength < 0.2) return null;
+  return { rr: (60 * fr) / pk.lag, strength: pk.strength };
 }

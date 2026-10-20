@@ -1,5 +1,7 @@
 // Utility statistiche e ricerca picchi (equivalente semplificato di scipy.signal.find_peaks).
 
+export const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
 export function percentile(arr, p) {
   const n = arr.length;
   if (!n) return 0;
@@ -121,4 +123,32 @@ export function clusterPeaks(peaks, x, tol) {
   }
   out.push(best);
   return out;
+}
+
+// Autocorrelazione normalizzata (media rimossa): picco locale più alto fra minLag e
+// maxLag (campioni), con interpolazione parabolica. Ritorna { lag, strength } o null.
+export function autocorrPeak(x, minLag, maxLag) {
+  const m = x.length;
+  if (minLag < 1 || maxLag <= minLag + 2 || maxLag + 1 >= m) return null;
+  const mu = mean(x);
+  const y = Float32Array.from(x, (v) => v - mu);
+  let r0 = 0;
+  for (let k = 0; k < m; k++) r0 += y[k] * y[k];
+  if (r0 <= 1e-12) return null;
+  r0 /= m;
+  const r = new Float32Array(maxLag + 2);
+  for (let L = minLag - 1; L <= maxLag + 1; L++) {
+    let s = 0;
+    for (let k = 0; k + L < m; k++) s += y[k] * y[k + L];
+    r[L] = s / (m - L) / r0;
+  }
+  let best = -Infinity, bestL = -1;
+  for (let L = minLag; L <= maxLag; L++) {
+    if (r[L] > r[L - 1] && r[L] >= r[L + 1] && r[L] > best) { best = r[L]; bestL = L; }
+  }
+  if (bestL < 0) return null;
+  const a = r[bestL - 1], b = r[bestL], c = r[bestL + 1];
+  const den = a - 2 * b + c;
+  const off = Math.abs(den) > 1e-9 ? Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / den)) : 0;
+  return { lag: bestL + off, strength: best };
 }

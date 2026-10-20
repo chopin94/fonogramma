@@ -4,6 +4,17 @@ import * as repo from '../store/repo.js';
 import { icon } from '../ui/icons.js';
 import { siteName } from '../sites.js';
 
+// Iniziali del paziente nel cerchio dell'elenco.
+export function avatarHtml(p) {
+  return `<div class="avatar">${esc(((p && p.lastName) || '?')[0])}${esc(((p && p.firstName) || '')[0] || '')}</div>`;
+}
+
+// Ricerca per cognome, nome o codice.
+export function patientMatches(p, query) {
+  const q = query.trim().toLowerCase();
+  return !q || patientName(p).toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q);
+}
+
 export function patientForm(p = {}) {
   const f = el(`<form class="col" autocomplete="off">
     <div class="form-grid">
@@ -71,10 +82,9 @@ export async function startNewVisit() {
   </div>`);
   const list = body.querySelector('[data-list]');
   const render = (q = '') => {
-    const ql = q.toLowerCase();
-    const items = patients.filter((p) => !ql || patientName(p).toLowerCase().includes(ql) || (p.code || '').toLowerCase().includes(ql));
+    const items = patients.filter((p) => patientMatches(p, q));
     list.innerHTML = items.length ? items.slice(0, 50).map((p) => `<div class="list-item" data-id="${esc(p.id)}">
-        <div class="avatar">${esc((p.lastName || '?')[0])}${esc((p.firstName || '')[0] || '')}</div>
+        ${avatarHtml(p)}
         <div class="grow"><b>${esc(patientName(p))}</b><div class="small muted">${ageFrom(p.dob) !== null ? `${ageFrom(p.dob)} anni · ` : ''}${esc(p.sex || '')} ${esc(p.code || '')}</div></div>
         ${icon('chevR')}</div>`).join('') : `<div class="empty">Nessun paziente in archivio</div>`;
   };
