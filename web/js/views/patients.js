@@ -38,7 +38,7 @@ export async function mount(view) {
       return `<a class="list-item" href="#/patient/${esc(p.id)}">
         ${avatarHtml(p)}
         <div class="grow"><b>${esc(patientName(p))}</b>
-          <div class="small muted">${age !== null ? `${age} anni · ` : ''}${esc(p.sex || '')}${p.code ? ` · ${esc(p.code)}` : ''} · ${m.n || 0} visite${m.last ? ` · ultima ${fmtDate(m.last)}` : ''}</div></div>
+          <div class="small muted">${esc([age !== null ? `${age} anni` : '', p.sex, p.code, `${m.n || 0} visite`, m.last ? `ultima ${fmtDate(m.last)}` : ''].filter(Boolean).join(' · '))}</div></div>
         ${icon('chevR')}</a>`;
     }).join('') : `<div class="empty">${patients.length ? 'Nessun risultato' : 'Archivio vuoto: aggiungi il primo paziente.'}</div>`;
   }

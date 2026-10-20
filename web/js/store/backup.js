@@ -43,7 +43,8 @@ export async function exportBackup() {
   return { blob: new Blob(parts, { type: 'application/json' }), audio: n };
 }
 
-// Unisce il backup all'archivio: vince la versione modificata più di recente.
+// Unisce il backup all'archivio: vince la versione modificata più di recente, salvo
+// che quella locale sia stata eliminata.
 export async function importBackup(file) {
   let data;
   try { data = JSON.parse(await file.text()); } catch { throw new Error('File non leggibile'); }
@@ -54,7 +55,8 @@ export async function importBackup(file) {
     for (const d of data[k] || []) {
       if (!d || !d.id) continue;
       const local = await db.get(k, d.id);
-      if (local && (local.updatedAt || 0) >= (d.updatedAt || 0)) { count.skipped++; continue; }
+      // un elemento eliminato su questo dispositivo viene ripristinato dal backup
+      if (local && !local.deleted && (local.updatedAt || 0) >= (d.updatedAt || 0)) { count.skipped++; continue; }
       const doc = { ...d, deleted: 0 };
       if (k === 'recordings') {
         if (audio[d.id]) {
