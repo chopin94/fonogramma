@@ -4,7 +4,7 @@
 import { esc, el, toast, sheet, confirmDialog, fmtNum, fmtDur, fmtDateTime, patientName, downloadBlob, safeName } from '../util.js';
 import { settings } from '../settings.js';
 import { siteName, siteById, HEART_SITES, LUNG_SITES } from '../sites.js';
-import { allPresets, getPreset } from '../presets.js';
+import { allPresets, findPreset, getPreset } from '../presets.js';
 import * as repo from '../store/repo.js';
 import { loadRecordingAudio, loadRecordingBlob } from '../store/audio.js';
 import { analyzeSamples, summarize } from '../audio/analyzer.js';
@@ -20,12 +20,20 @@ export async function mount(view, [id]) {
   let rec = await repo.getRecording(id);
   if (!rec) { view.innerHTML = `<div class="page"><div class="empty">Registrazione non trovata.</div></div>`; return; }
   const patient = rec.patientId ? await repo.getPatient(rec.patientId) : null;
+  // filtro usato in registrazione: se non è più un preset esistente (EQ dal vivo,
+  // preset personale eliminato) si usano le bande salvate con la registrazione
+  const REC_FILTER = 'rec';
+  const recFilter = !findPreset(rec.preset) && Array.isArray(rec.bands)
+    ? { id: REC_FILTER, name: rec.preset === 'eq-live' ? 'EQ personalizzato' : 'Filtro della registrazione', bands: rec.bands }
+    : null;
+  const filters = recFilter ? [recFilter, ...allPresets()] : allPresets();
+  const filterById = (id) => filters.find((f) => f.id === id) || getPreset(id);
   view.innerHTML = `<div class="page">
     <div class="row between" style="align-items:flex-start">
       <div class="grow">
         <div class="small muted">${rec.visitId ? `<a href="#/visit/${esc(rec.visitId)}?tab=${rec.kind === 'lung' ? 'lung' : 'heart'}">${icon('chevL', 'sm')} Visita</a> · ` : ''}${esc(patientName(patient))}</div>
         <h1>${icon(rec.kind === 'lung' ? 'lungs' : 'heart')} ${esc(rec.label || siteName(rec.site))}</h1>
-        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc(getPreset(rec.preset).name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz</div>
+        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc((recFilter || getPreset(rec.preset)).name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz</div>
       </div>
       <div class="row">
         <button class="btn sm" data-wav>${icon('download', 'sm')} WAV</button>
@@ -46,7 +54,7 @@ export async function mount(view, [id]) {
         <button data-v="all">Tutto</button><button data-v="sel">Selezione</button><button data-v="c1">1 ciclo</button><button data-v="c3">3 cicli</button>
       </div>
       <div class="seg" data-speed><button data-v="1">1×</button><button data-v="0.75">0,75×</button><button data-v="0.5">0,5×</button></div>
-      <select data-preset style="width:auto">${allPresets().map((p) => `<option value="${esc(p.id)}" ${p.id === rec.preset ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+      <select data-preset style="width:auto">${filters.map((p) => `<option value="${esc(p.id)}" ${p.id === (recFilter ? REC_FILTER : rec.preset) ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
       <label class="row small" style="gap:6px">${icon('volume', 'sm')}<input type="range" min="-20" max="30" value="${settings.volumeDb}" data-vol style="width:110px"></label>
       <span class="grow"></span>
       <button class="icon-btn" data-zin title="Zoom avanti">${icon('zoomIn')}</button>
@@ -69,7 +77,7 @@ export async function mount(view, [id]) {
   let audio = null, res = null, specImg = null, duration = rec.duration || 0;
   let vw = [0, Math.min(duration || 10, 10)];
   let selection = null, cursor = 0;
-  let loopOn = true, loopMode = 'all', speed = 1, playPreset = rec.preset || 'campana', volumeDb = settings.volumeDb;
+  let loopOn = true, loopMode = 'all', speed = 1, playPreset = recFilter ? REC_FILTER : rec.preset || 'campana', volumeDb = settings.volumeDb;
   const player = new LoopPlayer();
   let raf = 0, dirtyBase = true;
 
@@ -85,7 +93,12 @@ export async function mount(view, [id]) {
 
   async function analyze(kind) {
     q('[data-loading]').classList.remove('hidden');
-    res = await analyzeSamples(audio.samples, audio.sampleRate, kind);
+    try {
+      res = await analyzeSamples(audio.samples, audio.sampleRate, kind);
+    } catch (e) {
+      q('[data-loading]').innerHTML = `<div class="card"><b>Analisi non riuscita</b><div class="small muted">${esc(e.message)}</div></div>`;
+      return;
+    }
     const [lo, hi] = specLevels(res.spec.cols);
     specImg = buildSpecImage(res.spec, settings.colormap, lo, hi);
     q('[data-loading]').classList.add('hidden');
@@ -312,7 +325,7 @@ export async function mount(view, [id]) {
 
   async function play() {
     const [a, b] = loopRange();
-    const p = getPreset(playPreset);
+    const p = filterById(playPreset);
     q('[data-play]').innerHTML = `${icon('pause', 'sm')} Pausa`;
     try {
       await player.play({
@@ -441,7 +454,7 @@ export async function mount(view, [id]) {
 
   q('[data-more]').onclick = () => {
     const body = el(`<div class="col">
-      <button class="btn" data-a="filtered">${icon('download', 'sm')} Esporta ${selection ? 'selezione' : 'registrazione'} filtrata (${esc(getPreset(playPreset).name)})</button>
+      <button class="btn" data-a="filtered">${icon('download', 'sm')} Esporta ${selection ? 'selezione' : 'registrazione'} filtrata (${esc(filterById(playPreset).name)})</button>
       <button class="btn" data-a="assign">${icon('user', 'sm')} Assegna a paziente / visita</button>
       <button class="btn" data-a="site">${icon('pin', 'sm')} Cambia focolaio / punto</button>
       <button class="btn danger" data-a="del">${icon('trash', 'sm')} Elimina registrazione</button>
@@ -453,8 +466,8 @@ export async function mount(view, [id]) {
       sh.close();
       if (a.dataset.a === 'filtered') {
         const [s0, s1] = selection || [0, duration];
-        const y = await player.render(audio.samples, audio.sampleRate, Math.round(s0 * audio.sampleRate), Math.round(s1 * audio.sampleRate), getPreset(playPreset).bands, 1, true);
-        downloadBlob(encodeWav(y, audio.sampleRate), `${fileBase()}_${safeName(getPreset(playPreset).name)}.wav`);
+        const y = await player.render(audio.samples, audio.sampleRate, Math.round(s0 * audio.sampleRate), Math.round(s1 * audio.sampleRate), filterById(playPreset).bands, 1, true);
+        downloadBlob(encodeWav(y, audio.sampleRate), `${fileBase()}_${safeName(filterById(playPreset).name)}.wav`);
       } else if (a.dataset.a === 'assign') assign();
       else if (a.dataset.a === 'site') changeSite();
       else if (a.dataset.a === 'del') {
@@ -515,7 +528,7 @@ export async function mount(view, [id]) {
   ro.observe(q('[data-plots]'));
   layoutOverlay();
   raf = requestAnimationFrame(frame);
-  await analyze(rec.kind === 'lung' ? 'lung' : 'heart');
+  analyze(rec.kind === 'lung' ? 'lung' : 'heart');
 
   return async () => {
     cancelAnimationFrame(raf);

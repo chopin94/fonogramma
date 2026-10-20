@@ -33,9 +33,16 @@ export function allPresets() {
   return BUILTIN_PRESETS.concat((settings.customPresets || []).map((p) => ({ ...p, custom: true })));
 }
 
-export function getPreset(id) {
-  return allPresets().find((p) => p.id === id) || BUILTIN_PRESETS[0];
+// Preset per id, oppure null se non esiste più (EQ dal vivo, preset personale eliminato).
+export function findPreset(id) {
+  return allPresets().find((p) => p.id === id) || null;
 }
+
+export function getPreset(id) {
+  return findPreset(id) || BUILTIN_PRESETS[0];
+}
+
+export const EQ_LIVE_ID = 'eq-live';
 
 export function presetsFor(mode) {
   return allPresets().filter((p) => p.mode === mode || p.mode === 'any' || p.custom);

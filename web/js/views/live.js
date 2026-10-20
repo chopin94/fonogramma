@@ -4,7 +4,7 @@
 import { esc, el, toast, sheet, fmtNum, fmtDur, patientName, downloadBlob, safeName } from '../util.js';
 import { settings, updateSettings, wfConfig, WF_DETAIL } from '../settings.js';
 import { HEART_SITES, LUNG_SITES, HEART_TIPS, LUNG_TIPS, siteById } from '../sites.js';
-import { presetsFor, getPreset } from '../presets.js';
+import { presetsFor, getPreset, EQ_LIVE_ID } from '../presets.js';
 import { LiveEngine, listInputs } from '../audio/engine.js';
 import { DEMO_SCENARIOS } from '../audio/demo.js';
 import { encodeWav, decodeAny } from '../audio/wav.js';
@@ -126,8 +126,8 @@ export async function mount(view, params, query) {
 
   function updateTags() {
     const w = wfConfig(mode);
-    const p = getPreset(presetId);
-    q('[data-scopetag]').textContent = `PCG · ${p.name}${settings.denoise && mode === 'heart' ? ' · rid. rumore' : ''}`;
+    const name = presetId === EQ_LIVE_ID ? 'EQ personalizzato' : getPreset(presetId).name;
+    q('[data-scopetag]').textContent = `PCG · ${name}${settings.denoise && mode === 'heart' ? ' · rid. rumore' : ''}`;
     const res = engine.sampleRate / w.fftSize, rate = engine.sampleRate / w.hop;
     q('[data-wftag]').textContent = `${w.fMin}–${w.fMax} Hz · ${fmtNum(res, 1)} Hz/bin · ${n0(rate)} col/s`;
     q('[data-grablbl]').textContent = `Ultimi ${settings.grabSeconds} s`;
@@ -376,7 +376,7 @@ export async function mount(view, params, query) {
 
   async function stop() {
     if (recording) await stopRecording();
-    stopGuided(false);
+    await stopGuided(false);
     await engine.stop();
     running = false;
     try { wakeLock && (await wakeLock.release()); } catch {}
@@ -442,12 +442,13 @@ export async function mount(view, params, query) {
     guidedTimer = setInterval(guidedTick, 150);
   }
 
-  function stopGuided(showDone = true) {
+  async function stopGuided(showDone = true) {
     if (!guided) return;
     clearInterval(guidedTimer);
-    const saved = guided.saved;
-    if (recording) { recording = false; engine.stopRecording(); }
+    let saved = guided.saved;
     guided = null;
+    // il tratto già registrato del punto corrente viene salvato, non scartato
+    if (recording && (await stopRecording({ guided: true, partial: true }))) saved++;
     q('[data-banner]').classList.add('hidden');
     renderButtons();
     if (showDone && saved) toast(`Esame guidato: ${saved} registrazioni salvate`);
@@ -560,7 +561,7 @@ export async function mount(view, params, query) {
   function openEq() {
     const ed = openEqEditor({
       bands, fs: engine.sampleRate,
-      onChange: (b) => { bands = b; presetId = 'eq-live'; if (engine.running) engine.setBands(bands); renderPresets(); q('[data-scopetag]').textContent = 'PCG · EQ personalizzato'; },
+      onChange: (b) => { bands = b; presetId = EQ_LIVE_ID; if (engine.running) engine.setBands(bands); renderPresets(); updateTags(); },
     });
     ed.onSaved((p) => { setPreset(p.id, true); });
   }

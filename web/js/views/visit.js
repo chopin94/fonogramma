@@ -37,7 +37,10 @@ export async function mount(view, [id], query) {
   let lungSide = 'front';
   let recs = [];
 
-  const save = debounce(async () => { visit = await repo.saveVisit(visit); }, 600);
+  // salvataggio differito; finché è in attesa la copia in memoria è la più recente
+  let pendingSave = false;
+  const saveLater = debounce(async () => { pendingSave = false; visit = await repo.saveVisit(visit); }, 600);
+  const save = () => { pendingSave = true; saveLater(); };
 
   view.innerHTML = `<div class="page">
     <div class="row between" style="align-items:flex-start">
@@ -309,7 +312,7 @@ export async function mount(view, [id], query) {
       const ae = document.activeElement;
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
       const fresh = await repo.getVisit(visit.id);
-      if (fresh) visit = fresh;
+      if (fresh && !pendingSave) visit = fresh;
       const y = view.parentElement ? view.scrollTop : 0;
       await renderTab();
       view.scrollTop = y;
