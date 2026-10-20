@@ -23,7 +23,7 @@ Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i po
 
 <br>
 
-<img src="docs/cuore.jpg" width="820" alt="Auscultazione cardiaca: fonocardiogramma con S1/S2, waterfall e metriche in tempo reale">
+<img src="web/screenshots/cuore.jpg" width="820" alt="Auscultazione cardiaca: fonocardiogramma con S1/S2, waterfall e metriche in tempo reale">
 
 </div>
 
@@ -93,9 +93,9 @@ Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i po
 </table>
 
 <div align="center">
-<img src="docs/torace.jpg" width="560" alt="Auscultazione toracica con crepitii evidenziati sul waterfall">
+<img src="web/screenshots/torace.jpg" width="560" alt="Auscultazione toracica con crepitii evidenziati sul waterfall">
 &nbsp;
-<img src="docs/cellulare.jpg" width="200" alt="Fonogramma sul cellulare">
+<img src="web/screenshots/cellulare.jpg" width="200" alt="Fonogramma sul cellulare">
 </div>
 
 ---

@@ -1,13 +1,13 @@
 // Service worker: l'app funziona anche offline.
-const VERSION = 'fonogramma-1.1.0';
+const VERSION = 'fonogramma-2.0.0';
 const ASSETS = [
     './',
     'index.html',
     'manifest.webmanifest',
     'css/app.css',
-    'icons/icon.svg',
     'icons/icon-192.png',
     'icons/icon-512.png',
+    'icons/icon.svg',
     'icons/maskable-512.png',
     'js/app.js',
     'js/audio/analyzer.js',
