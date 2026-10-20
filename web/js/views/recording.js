@@ -458,7 +458,7 @@ export async function mount(view, [id]) {
       } else if (a.dataset.a === 'assign') assign();
       else if (a.dataset.a === 'site') changeSite();
       else if (a.dataset.a === 'del') {
-        if (await confirmDialog('Eliminare definitivamente questa registrazione da tutti i dispositivi?', { danger: true, okText: 'Elimina' })) {
+        if (await confirmDialog('Eliminare definitivamente questa registrazione?', { danger: true, okText: 'Elimina' })) {
           await repo.deleteRecording(rec.id);
           history.back();
         }

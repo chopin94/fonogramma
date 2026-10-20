@@ -52,14 +52,6 @@ export async function byIndex(store, index, value) {
   return p(db.transaction(store).objectStore(store).index(index).getAll(IDBKeyRange.only(value)));
 }
 
-export async function keys(store) {
-  const db = await open();
-  return p(db.transaction(store).objectStore(store).getAllKeys());
-}
-
-export const kvGet = (k) => get('kv', k);
-export const kvSet = (k, v) => put('kv', v, k);
-
 export async function persist() {
   try { if (navigator.storage && navigator.storage.persist) return await navigator.storage.persist(); } catch {}
   return false;

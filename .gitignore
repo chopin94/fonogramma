@@ -1,20 +1,11 @@
-# segreti e dati (mai nel repository)
+# dati sanitari e segreti (mai nel repository)
 .env
 *.env
-data/
-.devdata/
-caddy_data/
-caddy_config/
-*.sqlite
-*.sqlite3
-*.db
 *.wav
 fonogramma-backup-*.json
 
-# Python
-__pycache__/
-*.pyc
-.venv/
+# Node (test)
+node_modules/
 
 # editor / sistema
 .vscode/

@@ -46,7 +46,7 @@ export const DEFAULTS = {
   guidedHeartS: 15,
   guidedLungS: 20,
   guidedCountdown: 3,
-  pin: '',
+  lastMode: 'heart',
 };
 
 function merge(base, over) {

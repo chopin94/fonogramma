@@ -1,5 +1,5 @@
-// Accesso ai dati: pazienti, visite, registrazioni (con audio). Ogni modifica è
-// marcata "dirty" e verrà inviata al server di casa dalla sincronizzazione.
+// Accesso ai dati: pazienti, visite, registrazioni (con audio), tutto in IndexedDB.
+// Le eliminazioni sono logiche (deleted = 1), l'audio viene cancellato subito.
 import * as db from './db.js';
 import { uuid } from '../util.js';
 
@@ -7,12 +7,8 @@ const listeners = new Set();
 export function onDataChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 export function emitChange(kind) { listeners.forEach((fn) => fn(kind)); }
 
-let syncHook = null;
-export function setSyncHook(fn) { syncHook = fn; }
-
 function stamp(doc) {
   doc.updatedAt = Date.now();
-  doc.dirty = 1;
   return doc;
 }
 
@@ -20,7 +16,6 @@ async function save(store, doc) {
   stamp(doc);
   await db.put(store, doc);
   emitChange(store);
-  syncHook && syncHook();
   return doc;
 }
 
@@ -98,7 +93,7 @@ export async function getRecording(id) {
 }
 export async function saveRecording(rec, blob) {
   if (!rec.id) { rec.id = uuid(); rec.createdAt = rec.createdAt || Date.now(); }
-  if (blob) { await db.put('blobs', blob, rec.id); rec.audioSynced = 0; rec.hasAudio = 1; }
+  if (blob) { await db.put('blobs', blob, rec.id); rec.hasAudio = 1; }
   return save('recordings', rec);
 }
 export async function deleteRecording(id, emit = true) {

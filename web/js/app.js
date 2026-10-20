@@ -1,6 +1,5 @@
-// Avvio dell'app: router, service worker (offline/installazione), sincronizzazione.
+// Avvio dell'app: router, service worker (offline/installazione), avviso iniziale.
 import { applyTheme } from './settings.js';
-import { startSync, onSync, syncNow } from './store/sync.js';
 import { toast, sheet } from './util.js';
 
 const routes = [
@@ -53,37 +52,11 @@ async function route() {
 // Ricarica la vista corrente se è la stessa rotta ma con parametri diversi
 window.addEventListener('hashchange', route);
 
-// ---------- stato sincronizzazione nella barra ----------
-function bindSyncChip() {
-  const chip = document.getElementById('sync-chip');
-  onSync((st) => {
-    chip.classList.remove('ok', 'off', 'busy');
-    let lbl;
-    if (st.mode === 'local') {
-      chip.classList.add('ok');
-      chip.querySelector('.lbl').textContent = 'Sul dispositivo';
-      chip.title = 'I dati restano solo su questo dispositivo (backup in Impostazioni)';
-      return;
-    }
-    if (st.syncing) { chip.classList.add('busy'); lbl = 'Sincronizzo…'; }
-    else if (st.online === false) { chip.classList.add('off'); lbl = 'Offline'; }
-    else if (st.error) { chip.classList.add('off'); lbl = st.pinOk === false ? 'PIN richiesto' : 'Errore sync'; }
-    else if (st.online) { chip.classList.add('ok'); lbl = st.pending ? `${st.pending} in coda` : 'Sincronizzato'; }
-    else lbl = '…';
-    chip.querySelector('.lbl').textContent = lbl;
-    chip.title = st.error || 'Sincronizzazione con il server di casa';
-  });
-  chip.onclick = () => {
-    const l = chip.querySelector('.lbl').textContent;
-    if (l === 'PIN richiesto' || l === 'Sul dispositivo') location.hash = '#/settings';
-    else syncNow();
-  };
-}
-
 // ---------- service worker e installazione ----------
 function registerSW() {
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
-  if (location.port === '8765' && !localStorage.getItem('fonogramma.devsw')) return; // server di sviluppo: niente cache
+  // in sviluppo (localhost) niente cache, salvo richiesta esplicita
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !localStorage.getItem('fonogramma.devsw')) return;
   let reloading = false;
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -119,7 +92,7 @@ function firstRunNotice() {
       <ul class="small">
         <li>Le analisi automatiche (toni, soffi, crepitii, frequenze) sono <b>indicative</b> e non costituiscono diagnosi.</li>
         <li><b>Non è un dispositivo medico</b> certificato: le decisioni cliniche restano del professionista.</li>
-        <li>I dati dei pazienti restano <b>su questo dispositivo</b>, salvo che tu configuri un tuo server di sincronizzazione.</li>
+        <li>I dati dei pazienti restano <b>solo su questo dispositivo</b>: fai ogni tanto un backup da Impostazioni.</li>
       </ul>`,
     actions: [{ label: 'Ho capito', kind: 'primary', run: () => { try { localStorage.setItem(KEY, '1'); } catch {} } }],
   });
@@ -127,8 +100,6 @@ function firstRunNotice() {
 
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
-bindSyncChip();
 registerSW();
-startSync();
 route();
 firstRunNotice();

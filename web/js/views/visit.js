@@ -305,7 +305,7 @@ export async function mount(view, [id], query) {
   renderHead();
   await renderTab();
   const off = repo.onDataChange(async (kind) => {
-    if (kind === 'recordings' || kind === 'sync') {
+    if (kind === 'recordings' || kind === 'import') {
       const ae = document.activeElement;
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
       const fresh = await repo.getVisit(visit.id);

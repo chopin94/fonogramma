@@ -13,7 +13,7 @@ export async function mount(view) {
   view.innerHTML = `<div class="page">
     ${!window.isSecureContext ? `<div class="card" style="border-color:var(--warn);margin-bottom:12px">
       <h3>${icon('shield')} Connessione non sicura</h3>
-      <p class="small">Il microfono e l'installazione dell'app richiedono HTTPS. Apri l'app da un indirizzo <b>https://</b> (per un server di casa installa il suo certificato: Impostazioni → Certificato).</p></div>` : ''}
+      <p class="small">Il microfono e l'installazione dell'app richiedono una connessione sicura: apri l'app dal suo indirizzo <b>https://</b>.</p></div>` : ''}
     <div class="hero">
       <div class="card hero-main">
         <h1>${greeting()}</h1>

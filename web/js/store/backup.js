@@ -1,6 +1,5 @@
 // Backup dell'archivio locale in un unico file JSON (pazienti, visite, registrazioni e
-// audio WAV in base64) e ripristino, senza bisogno del server. Serve a spostare i dati
-// fra dispositivi o a conservarli quando l'app è usata senza server di casa.
+// audio WAV in base64) e ripristino: serve a conservare i dati e a spostarli fra dispositivi.
 import * as db from './db.js';
 import { emitChange } from './repo.js';
 
@@ -27,7 +26,7 @@ function base64ToBlob(b64, type = 'audio/wav') {
 export async function exportBackup() {
   const parts = [`{"format":"${FORMAT}","version":1,"exportedAt":${Date.now()}`];
   for (const k of KINDS) {
-    const docs = (await db.all(k)).filter((d) => !d.deleted).map(({ dirty, audioSynced, ...rest }) => rest);
+    const docs = (await db.all(k)).filter((d) => !d.deleted).map(({ dirty, audioSynced, ...rest }) => rest); // campi della vecchia sincronizzazione
     parts.push(`,${JSON.stringify(k)}:${JSON.stringify(docs)}`);
   }
   parts.push(',"audio":{');
@@ -56,18 +55,17 @@ export async function importBackup(file) {
       if (!d || !d.id) continue;
       const local = await db.get(k, d.id);
       if (local && (local.updatedAt || 0) >= (d.updatedAt || 0)) { count.skipped++; continue; }
-      const doc = { ...d, deleted: 0, dirty: 1 };
+      const doc = { ...d, deleted: 0 };
       if (k === 'recordings') {
         if (audio[d.id]) {
           await db.put('blobs', base64ToBlob(audio[d.id]), d.id);
           doc.hasAudio = 1;
-          doc.audioSynced = 0;
-        } else doc.audioSynced = 1; // eventualmente si recupera dal server
+        }
       }
       await db.put(k, doc);
       count.added++;
     }
   }
-  emitChange('sync');
+  emitChange('import');
   return count;
 }

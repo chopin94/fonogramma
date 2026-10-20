@@ -80,16 +80,11 @@ a { color: var(--accent); }
 .brand { display: flex; align-items: center; gap: .5rem; font-weight: 700; letter-spacing: -.02em; text-decoration: none; color: var(--text); }
 .brand img { width: 30px; height: 30px; border-radius: 8px; }
 .brand span small { display: block; font-weight: 500; font-size: .7rem; color: var(--muted); letter-spacing: 0; }
-.ctx-chip { margin-left: auto; display: flex; gap: .4rem; align-items: center; min-width: 0; }
-.sync-chip {
-  display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .6rem; border-radius: 99px;
-  background: var(--card); border: 1px solid var(--line); font-size: .78rem; color: var(--muted); cursor: pointer; white-space: nowrap;
+.status-chip {
+  margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .6rem; border-radius: 99px;
+  background: var(--card); border: 1px solid var(--line); font-size: .78rem; color: var(--muted); text-decoration: none; white-space: nowrap;
 }
-.sync-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-.sync-chip.ok .dot { background: var(--ok); }
-.sync-chip.off .dot { background: var(--bad); }
-.sync-chip.busy .dot { background: var(--warn); animation: blink 1s infinite; }
-@keyframes blink { 50% { opacity: .3; } }
+.status-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
 
 main#view { overflow: auto; min-height: 0; position: relative; grid-row: 2; }
 .topbar { grid-row: 1; }

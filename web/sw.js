@@ -1,4 +1,4 @@
-// Service worker: l'app funziona anche offline (le API restano sempre in rete).
+// Service worker: l'app funziona anche offline.
 const VERSION = 'fonogramma-1.1.0';
 const ASSETS = [
     './',
@@ -33,7 +33,6 @@ const ASSETS = [
     'js/store/backup.js',
     'js/store/db.js',
     'js/store/repo.js',
-    'js/store/sync.js',
     'js/ui/bodymap.js',
     'js/ui/charts.js',
     'js/ui/colormaps.js',
@@ -76,10 +75,6 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
-  // API e certificato sempre in rete (l'app può stare in una sottocartella, es. GitHub Pages)
-  const rel = url.href.slice(self.registration.scope.length);
-  if (url.href.startsWith(self.registration.scope) && (rel.startsWith('api/') || rel === 'ca.crt')) return;
-  if (url.pathname.startsWith('/api/') || url.pathname === '/ca.crt') return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).catch(() => caches.match('index.html')));
     return;

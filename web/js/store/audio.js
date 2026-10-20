@@ -1,11 +1,10 @@
-// Caricamento dell'audio di una registrazione (locale o dal server di casa).
+// Caricamento dell'audio di una registrazione dall'archivio locale.
 import { getLocalAudio } from './repo.js';
-import { fetchAudio } from './sync.js';
 import { decodeAny } from '../audio/wav.js';
 
 export async function loadRecordingBlob(rec) {
-  let blob = await getLocalAudio(rec.id);
-  if (!blob) blob = await fetchAudio(rec.id);
+  const blob = await getLocalAudio(rec.id);
+  if (!blob) throw new Error('Audio non presente su questo dispositivo');
   return blob;
 }
 

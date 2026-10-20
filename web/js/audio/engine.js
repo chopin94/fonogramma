@@ -14,7 +14,7 @@ export async function listInputs() {
 }
 
 export function secureContextProblem() {
-  if (!window.isSecureContext) return 'Il microfono richiede HTTPS: apri l\'app con https:// e installa il certificato (Impostazioni → Certificato).';
+  if (!window.isSecureContext) return 'Il microfono richiede una connessione sicura: apri l\'app dal suo indirizzo https://.';
   if (!navigator.mediaDevices?.getUserMedia) return 'Questo browser non permette l\'accesso al microfono.';
   return null;
 }

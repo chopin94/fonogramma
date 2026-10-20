@@ -1,11 +1,10 @@
-// Impostazioni: server di casa e sincronizzazione, certificato HTTPS, ingresso audio,
-// registrazione, visualizzazione, preset personali, archivio locale.
-import { esc, el, toast, confirmDialog, fmtDateTime, downloadBlob } from '../util.js';
+// Impostazioni: ingresso audio, registrazione, visualizzazione, preset personali,
+// archivio locale con backup e ripristino.
+import { esc, toast, confirmDialog, downloadBlob } from '../util.js';
 import { settings, updateSettings, applyTheme } from '../settings.js';
 import { listInputs } from '../audio/engine.js';
 import { COLORMAPS, lutCss } from '../ui/colormaps.js';
 import { openEqEditor } from '../ui/eqeditor.js';
-import { onSync, syncNow, testPin, downloadBackup, isLocalMode } from '../store/sync.js';
 import { exportBackup, importBackup } from '../store/backup.js';
 import { persist } from '../store/db.js';
 import { icon } from '../ui/icons.js';
@@ -15,22 +14,6 @@ export async function mount(view) {
   view.innerHTML = `<div class="page">
     <h1>Impostazioni</h1>
     <div class="grid two">
-      <div class="card col" data-server></div>
-      <div class="card col" data-cert>
-        <h3>${icon('shield')} Certificato HTTPS</h3>
-        <p class="small">Microfono e installazione dell'app funzionano solo in HTTPS. Il server di casa usa un certificato proprio: installa <b>una volta</b> su ogni dispositivo il certificato della sua autorità.</p>
-        <a class="btn" href="/ca.crt" download="fonogramma-ca.crt">${icon('download', 'sm')} Scarica il certificato (fonogramma-ca.crt)</a>
-        <details class="small"><summary><b>Android</b></summary><ol>
-          <li>Scarica il file qui sopra.</li><li>Impostazioni → Sicurezza e privacy → Altre impostazioni di sicurezza → Installa da memoria del dispositivo → <b>Certificato CA</b>.</li>
-          <li>Scegli <i>fonogramma-ca.crt</i> e conferma.</li><li>Riapri Chrome su <b>https://</b> e usa ⋮ → <b>Installa app</b>.</li></ol></details>
-        <details class="small"><summary><b>PC Windows</b></summary><ol>
-          <li>Apri il file scaricato → <i>Installa certificato</i> → Computer locale.</li>
-          <li>Scegli <i>Colloca tutti i certificati nel seguente archivio</i> → <b>Autorità di certificazione radice attendibili</b>.</li>
-          <li>Riavvia il browser, apri l'indirizzo https:// e clicca l'icona di installazione nella barra degli indirizzi.</li></ol></details>
-        <details class="small"><summary><b>iPhone / iPad</b></summary><ol>
-          <li>Apri il link con Safari e consenti il download del profilo.</li><li>Impostazioni → Profilo scaricato → Installa.</li>
-          <li>Impostazioni → Generali → Info → Impostazioni certificati → abilita fiducia completa.</li><li>Safari → Condividi → Aggiungi a Home.</li></ol></details>
-      </div>
       <div class="card col" data-input></div>
       <div class="card col">
         <h3>${icon('rec')} Registrazione</h3>
@@ -59,38 +42,6 @@ export async function mount(view) {
     </div>
   </div>`;
   const q = (s) => view.querySelector(s);
-
-  // --- server ---
-  const offSync = onSync((st) => {
-    const box = q('[data-server]');
-    if (!box) return;
-    // senza server di casa: niente sincronizzazione né certificato della CA locale
-    const local = st.mode === 'local';
-    box.classList.toggle('hidden', local);
-    q('[data-cert]').classList.toggle('hidden', local);
-    if (local) return;
-    const focus = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.pin !== undefined;
-    if (focus) return;
-    box.innerHTML = `<h3>${icon(st.online ? 'cloud' : 'cloudOff')} Server di casa</h3>
-      <div class="row"><span class="badge ${st.online ? 'ok' : 'bad'}">${st.online ? 'Raggiungibile' : st.online === false ? 'Non raggiungibile' : 'Verifica…'}</span>
-        ${st.pending ? `<span class="badge warn">${st.pending} da inviare</span>` : st.online ? '<span class="badge ok">Tutto sincronizzato</span>' : ''}</div>
-      <div class="small muted">Ultima sincronizzazione: ${st.lastSync ? fmtDateTime(st.lastSync) : '—'}${st.error ? ` · <span style="color:var(--bad)">${esc(st.error)}</span>` : ''}</div>
-      <p class="small">I dati vengono salvati prima su questo dispositivo (funziona anche offline) e poi copiati sul server di casa, così cellulare e PC vedono le stesse visite.</p>
-      <label class="field"><span>PIN di accesso al server${st.pinRequired ? ' (richiesto)' : ''}</span>
-        <div class="row"><input type="password" inputmode="numeric" value="${esc(settings.pin)}" data-pin class="grow" style="flex:1"><button class="btn" data-pinok>Verifica</button></div></label>
-      <div class="row"><button class="btn primary" data-sync>${icon('refresh', 'sm')} Sincronizza ora</button><button class="btn" data-backup>${icon('download', 'sm')} Backup completo (zip)</button></div>`;
-    box.querySelector('[data-pinok]').onclick = async () => {
-      updateSettings({ pin: box.querySelector('[data-pin]').value.trim() });
-      if (await testPin()) { toast('PIN corretto'); syncNow(); } else toast('PIN non valido', { type: 'error' });
-    };
-    box.querySelector('[data-sync]').onclick = () => syncNow();
-    box.querySelector('[data-backup]').onclick = async () => {
-      try {
-        toast('Preparazione del backup…');
-        downloadBlob(await downloadBackup(), `fonogramma-backup-${new Date().toISOString().slice(0, 10)}.zip`);
-      } catch (e) { toast('Backup non riuscito: ' + e.message, { type: 'error' }); }
-    };
-  });
 
   // --- ingresso audio ---
   async function renderInput() {
@@ -172,7 +123,7 @@ export async function mount(view) {
       <div class="small">${est ? `Spazio usato ${mb(est.usage)} su ${mb(est.quota)} disponibili` : 'Stima non disponibile'}</div>
       <div class="small">${persisted ? '<span class="badge ok">Archiviazione persistente attiva</span>' : '<span class="badge warn">Il browser potrebbe liberare spazio</span>'}</div>
       ${persisted ? '' : `<button class="btn sm" data-persist>Chiedi archiviazione persistente</button>`}
-      <p class="small">${isLocalMode() ? 'Pazienti, visite e registrazioni restano <b>solo su questo dispositivo</b>: nessun dato viene inviato a server esterni. Esporta ogni tanto un backup (serve anche per spostare i dati su un altro dispositivo): se cancelli i dati del browser o disinstalli l’app, l’archivio va perso.' : 'Le registrazioni sincronizzate restano comunque sul server di casa. Il backup qui sotto salva i dati presenti su questo dispositivo.'}</p>
+      <p class="small">Pazienti, visite e registrazioni restano <b>solo su questo dispositivo</b>: nessun dato viene inviato a server esterni. Esporta ogni tanto un backup (serve anche per spostare i dati su un altro dispositivo): se cancelli i dati del browser o disinstalli l’app, l’archivio va perso.</p>
       <div class="row"><button class="btn" data-export>${icon('download', 'sm')} Esporta backup</button>
         <label class="btn">${icon('refresh', 'sm')} Importa backup<input type="file" accept=".json,application/json" data-import hidden></label></div>
       <div class="tiny muted">Il backup contiene dati sanitari: conservalo in un posto sicuro.</div>`;
@@ -198,5 +149,4 @@ export async function mount(view) {
   }
   renderStorage();
 
-  return () => offSync();
 }
