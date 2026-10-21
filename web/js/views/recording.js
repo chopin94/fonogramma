@@ -91,7 +91,9 @@ export async function mount(view, [id]) {
     return;
   }
   duration = audio.samples.length / audio.sampleRate;
-  vw = [0, Math.min(duration, rec.kind === 'lung' ? 12 : 8)];
+  // sul telefono una finestra più corta: i marcatori restano leggibili
+  const narrow = view.clientWidth < 600;
+  vw = [0, Math.min(duration, rec.kind === 'lung' ? (narrow ? 6 : 12) : (narrow ? 4 : 8))];
 
   async function analyze(kind) {
     q('[data-loading]').classList.remove('hidden');

@@ -166,6 +166,7 @@ main#view { overflow: auto; min-height: 0; position: relative; grid-row: 2; }
 .btn.lg { min-height: 48px; padding: .8rem 1.25rem; font-size: 1.02rem; border-radius: 12px; }
 .btn.sm { min-height: 32px; padding: .32rem .65rem; font-size: .85rem; border-radius: 8px; }
 .btn.block { width: 100%; }
+.btn.wrap { white-space: normal; text-align: left; justify-content: flex-start; }
 .icon-btn {
   width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex: none;
   border-radius: 10px; border: 1px solid var(--line2); background: var(--card); color: var(--text); cursor: pointer;

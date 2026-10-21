@@ -63,7 +63,7 @@ export async function mount(view) {
       <p class="small" data-kindhelp></p>
       <label class="field"><span>Dispositivo</span><select data-dev><option value="">Predefinito di sistema</option>
         ${devs.map((d) => `<option value="${esc(d.deviceId)}" ${d.deviceId === settings.deviceId ? 'selected' : ''}>${esc(d.label || 'Ingresso audio')}${d.label ? ` · ${INPUT_TYPES[classifyInput(d.label)].short}` : ''}</option>`).join('')}</select></label>
-      ${labels ? '' : `<button class="btn sm" data-perm>${icon('mic', 'sm')} Mostra i nomi degli ingressi (richiede il permesso)</button>`}
+      ${labels ? '' : `<button class="btn sm wrap" data-perm>${icon('mic', 'sm')} Mostra i nomi degli ingressi (richiede il permesso)</button>`}
       <label class="field"><span>Canale</span><select data-ch>${[['mix', 'Mono (somma)'], ['L', 'Sinistro'], ['R', 'Destro']].map(([v, l]) => `<option value="${v}" ${settings.inputChannel === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-mon ${settings.monitor ? 'checked' : ''}> Ascolto in cuffia attivo all'avvio</label>
       <div class="row"><a class="btn primary" href="#/live?check=1&autostart=1">${icon('check', 'sm')} Verifica guidata dell’ingresso</a><a class="btn" href="#/live">${icon('stetho', 'sm')} Prova l'ingresso</a></div>
