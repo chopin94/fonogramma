@@ -21,6 +21,7 @@ export const DEFAULTS = {
   deviceId: '',
   inputChannel: 'mix',
   inputKind: 'stetho', // come si acquisisce il suono: vedi INPUT_KINDS in audio/input.js
+  inputChecks: {}, // esito dell'ultima verifica guidata per ingresso (views/inputcheck.js)
   gainDb: 0,
   monitor: false,
   volumeDb: 6,

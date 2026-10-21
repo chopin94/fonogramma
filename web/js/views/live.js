@@ -8,6 +8,7 @@ import { presetsFor, getPreset, EQ_LIVE_ID } from '../presets.js';
 import { LiveEngine, listInputs } from '../audio/engine.js';
 import { INPUT_TYPES, INPUT_KINDS, inputAdvice, inputRecord, worstLevel, diagnosticsText } from '../audio/input.js';
 import { Coach, Tally, coachState, ISSUE_NAMES } from '../coach.js';
+import { openInputCheck, lastCheck, checkLines } from './inputcheck.js';
 import { DEMO_SCENARIOS } from '../audio/demo.js';
 import { encodeWav, decodeAny } from '../audio/wav.js';
 import { analyzeSamples, summarize } from '../audio/analyzer.js';
@@ -50,6 +51,7 @@ export async function mount(view, params, query) {
   const coach = new Coach();
   let coachCur = null, lastQuality = null, recTally = null, lastRecTally = null, coachSince = 0;
   const qualityListeners = new Set();
+  let pendingCheck = query.check === '1'; // aperta dalle Impostazioni: verifica appena parte l'ascolto
 
   function initialPreset() {
     const s = siteById(site);
@@ -344,13 +346,28 @@ export async function mount(view, params, query) {
     pill.innerHTML = `<i></i><span>${esc(c.text)}</span>`;
   }
 
-  async function openInputSheet() {
+  async function diagnostics() {
     const inputs = await listInputs().catch(() => []);
+    const live = running && engine.source === 'mic' ? inputInfo : null;
+    return diagnosticsText(live, { kind: settings.inputKind, inputs, advice, check: checkLines(lastCheck(live)) });
+  }
+
+  async function openCheck() {
+    if (!running) { await start(); if (!running) return; }
+    openInputCheck({
+      source: engine.source, info: engine.source === 'mic' ? inputInfo : null, kind: settings.inputKind,
+      subscribe: (fn) => { qualityListeners.add(fn); return () => qualityListeners.delete(fn); },
+      heart: () => lastHeart, diagnostics, onDone: () => renderPill(),
+    });
+  }
+
+  async function openInputSheet() {
     const kindName = (INPUT_KINDS.find((k) => k.id === settings.inputKind) || INPUT_KINDS[0]).name;
     const live = running && engine.source === 'mic' && inputInfo;
     const i = inputInfo;
     const state = (v) => (v === true ? 'attiva' : v === false ? 'spenta' : 'n.d.');
     const now = running ? coachCur || stateNow(lastQuality) : null;
+    const chk = lastCheck(live ? inputInfo : null);
     const lq = lastQuality;
     const body = el(`<div class="col">
       ${now ? `<div class="advice ${now.level === 'ok' ? 'ok' : now.level}"><b>Ora: ${esc(now.text)}</b>${now.fix ? `<div class="small">${esc(now.fix)}</div>` : ''}
@@ -363,8 +380,10 @@ export async function mount(view, params, query) {
         ${i.latencyMs ? `<dt>Ritardo dell’ascolto</dt><dd>${i.latencyMs} ms</dd>` : ''}
       </dl>` : `<div class="small muted">${running ? 'La sorgente è il simulatore o un file: niente da verificare.' : 'Avvia l’ascolto con il fonendoscopio per vedere i dati dell’ingresso.'}</div>`}
       ${advice.length ? `<div class="col" style="gap:8px">${advice.map((a) => `<div class="advice ${a.level}"><b>${esc(a.text)}</b>${a.fix ? `<div class="small">${esc(a.fix)}</div>` : ''}</div>`).join('')}</div>` : live ? '<div class="advice ok"><b>Nessun problema riconosciuto.</b></div>' : ''}
+      ${live ? `<div class="small">${chk ? `Ultima verifica guidata (${new Date(chk.at).toLocaleDateString('it-IT')}): <b>${esc(chk.verdict)}</b>` : 'Questo ingresso non è ancora stato verificato.'}</div>` : ''}
       <div class="tiny muted">L’uso dichiarato si cambia in Impostazioni → Ingresso audio.</div>
       <div class="row">
+        <button class="btn primary" data-check>${icon('check', 'sm')} Verifica guidata (30 s)</button>
         <button class="btn" data-adj>${icon('sliders', 'sm')} Cambia ingresso</button>
         <button class="btn" data-copy>${icon('file', 'sm')} Copia diagnostica</button>
       </div>
@@ -372,8 +391,9 @@ export async function mount(view, params, query) {
     </div>`);
     const sh = sheet({ title: 'Ingresso audio', body });
     body.querySelector('[data-adj]').onclick = () => { sh.close(); openAdjust(); };
+    body.querySelector('[data-check]').onclick = () => { sh.close(); openCheck(); };
     body.querySelector('[data-copy]').onclick = async () => {
-      const txt = diagnosticsText(live ? inputInfo : null, { kind: settings.inputKind, inputs, advice });
+      const txt = await diagnostics();
       try {
         await navigator.clipboard.writeText(txt);
         toast('Diagnostica copiata: incollala in un messaggio');
@@ -392,7 +412,9 @@ export async function mount(view, params, query) {
     advice = inputInfo ? inputAdvice(inputInfo, settings.inputKind) : [];
     renderPill();
     const worst = worstLevel(advice);
+    if (pendingCheck) { pendingCheck = false; openCheck(); return; }
     if (worst !== 'ok') toast(advice.find((a) => a.level === worst).text, { type: worst === 'bad' ? 'error' : 'warn', timeout: 8000, action: { label: 'Dettagli', run: openInputSheet } });
+    else if (inputInfo && !lastCheck(inputInfo)) toast('Ingresso nuovo: in 30 secondi puoi verificare che funzioni bene.', { timeout: 8000, action: { label: 'Verifica', run: openCheck } });
   }
 
   // ---------- motore ----------

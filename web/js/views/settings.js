@@ -58,7 +58,8 @@ export async function mount(view) {
       ${labels ? '' : `<button class="btn sm" data-perm>${icon('mic', 'sm')} Mostra i nomi degli ingressi (richiede il permesso)</button>`}
       <label class="field"><span>Canale</span><select data-ch>${[['mix', 'Mono (somma)'], ['L', 'Sinistro'], ['R', 'Destro']].map(([v, l]) => `<option value="${v}" ${settings.inputChannel === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-mon ${settings.monitor ? 'checked' : ''}> Ascolto in cuffia attivo all'avvio</label>
-      <a class="btn" href="#/live">${icon('stetho', 'sm')} Prova l'ingresso</a>`;
+      <div class="row"><a class="btn primary" href="#/live?check=1&autostart=1">${icon('check', 'sm')} Verifica guidata dell’ingresso</a><a class="btn" href="#/live">${icon('stetho', 'sm')} Prova l'ingresso</a></div>
+      <div class="tiny muted">La verifica (30 s) controlla che il suono arrivi dal fonendo, misura rumore e ronzio e prova il battito sul torace; ti dice cosa correggere.</div>`;
     const kindHelp = () => {
       box.querySelector('[data-kindhelp]').textContent = {
         stetho: 'Collega il fonendoscopio al jack con un cavo a 4 poli (TRRS, cuffie+microfono); sui telefoni senza jack usa un adattatore USB-C con ingresso microfono. Va bene anche un microfono o una scheda audio USB.',

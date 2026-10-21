@@ -269,6 +269,10 @@ label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .advice.info { border-left-color: var(--accent); }
 .advice.warn { border-left-color: var(--warn); }
 .advice.bad { border-left-color: var(--bad); }
+.check-flow .lead { font-size: 1.05rem; margin: 4px 0; }
+.tap-dots { display: flex; gap: 10px; }
+.tap-dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--card2); border: 2px solid var(--line); transition: background .2s; }
+.tap-dots i.on { background: var(--ok); border-color: var(--ok); }
 .overlay-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #c9d6f3; padding: 20px; pointer-events: none; }
 .overlay-msg .card { pointer-events: auto; max-width: 420px; }
 .side { border-top: 1px solid var(--line); background: var(--bg); overflow: auto; }
