@@ -50,9 +50,10 @@ const P = {
   shield: 'M12 2.5l8 3v6c0 5-3.5 8.7-8 10-4.5-1.3-8-5-8-10v-6z',
   map: 'M9 4.5L3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5zM9 4.5v13M15 6.5v13',
   list: 'M8.5 6h12M8.5 12h12M8.5 18h12M4 6v.1M4 12v.1M4 18v.1',
+  more: 'M5 10.4a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zm7 0a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zm7 0a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z',
   flag: 'M5 21.5V3.5M5 4h12l-2.5 4L17 12H5',
 };
-const FILLED = new Set(['play', 'pause', 'stop', 'rec']);
+const FILLED = new Set(['play', 'pause', 'stop', 'rec', 'more']);
 
 export function icon(name, cls = '') {
   const d = P[name] || P.info;

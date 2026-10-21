@@ -6,7 +6,7 @@ import { settings, updateSettings, wfConfig, WF_DETAIL } from '../settings.js';
 import { HEART_SITES, LUNG_SITES, HEART_TIPS, LUNG_TIPS, siteById } from '../sites.js';
 import { presetsFor, getPreset, EQ_LIVE_ID } from '../presets.js';
 import { LiveEngine, listInputs } from '../audio/engine.js';
-import { INPUT_TYPES, INPUT_KINDS, inputAdvice, inputRecord, worstLevel, diagnosticsText } from '../audio/input.js';
+import { INPUT_TYPES, INPUT_KINDS, inputAdvice, inputRecord, worstLevel, diagnosticsText, probeChannels, lastChannelProbe } from '../audio/input.js';
 import { Coach, Tally, coachState, ISSUE_NAMES } from '../coach.js';
 import { openInputCheck, lastCheck, checkLines } from './inputcheck.js';
 import { DEMO_SCENARIOS } from '../audio/demo.js';
@@ -60,51 +60,49 @@ export async function mount(view, params, query) {
   }
 
   view.innerHTML = `<section class="live">
-    <div class="live-top">
+    <header class="live-top">
       <div class="seg" data-modeseg>
-        <button data-m="heart">${icon('heart', 'sm')} Cuore</button>
-        <button data-m="lung">${icon('lungs', 'sm')} Torace</button>
+        <button data-m="heart" title="Cuore">${icon('heart', 'sm')}<span class="lbl-xs">Cuore</span></button>
+        <button data-m="lung" title="Torace">${icon('lungs', 'sm')}<span class="lbl-xs">Torace</span></button>
       </div>
-      <button class="site-btn" data-sitebtn></button>
+      <button class="site-btn" data-sitebtn title="Scegli il punto di auscultazione"></button>
       <span class="grow"></span>
-      ${visit ? `<a class="badge accent" href="#/visit/${esc(visit.id)}?tab=${mode === 'lung' ? 'lung' : 'heart'}" data-ctx>${icon('user', 'sm')} ${esc(patientName(patient))}</a>` : `<span class="badge" title="Le registrazioni andranno tra quelle senza paziente">Senza paziente</span>`}
-      <button class="icon-btn" data-info title="Guida al punto di auscultazione">${icon('info')}</button>
-      <button class="btn sm" data-guided title="Registra tutti i punti in sequenza">${icon('list', 'sm')} <span class="hide-sm">Esame </span>guidato</button>
-    </div>
+      ${visit ? `<a class="ctx-chip" href="#/visit/${esc(visit.id)}?tab=${mode === 'lung' ? 'lung' : 'heart'}" data-ctx title="Torna alla visita">${icon('user', 'sm')}<span>${esc(patientName(patient))}</span></a>`
+        : `<span class="ctx-chip free" title="Le registrazioni andranno tra quelle senza paziente">${icon('user', 'sm')}<span>Senza paziente</span></span>`}
+      <button class="btn sm hide-sm" data-guided title="Registra tutti i punti in sequenza">${icon('list', 'sm')} Esame guidato</button>
+      <button class="icon-btn" data-more title="Altre funzioni" aria-label="Altre funzioni">${icon('more')}</button>
+    </header>
     <div class="live-body">
-      <div class="plots">
-        <div class="plot"><canvas data-scope></canvas><span class="plot-tag" data-scopetag></span><button class="q-pill hidden" data-qpill></button><div class="coach-line hidden" data-coachline></div></div>
-        <div class="plot"><canvas data-wf></canvas><span class="plot-tag" data-wftag></span></div>
+      <div class="plots ${mode}" data-plots>
+        <div class="plot"><canvas data-scope></canvas><button class="q-pill hidden" data-qpill></button><span class="plot-tag hidden" data-frozen>${icon('snow', 'sm')} Congelato</span><div class="coach-line hidden" data-coachline></div></div>
+        <div class="plot"><canvas data-wf></canvas><span class="plot-tag bottom" data-wftag></span></div>
         <div class="overlay-msg" data-overlay></div>
         <div class="guided-banner hidden" data-banner></div>
       </div>
       <aside class="side">
-        <div class="metrics" data-metrics></div>
-        <div class="side-extra">
-          <div class="card flat" style="padding:10px;margin-bottom:8px">
-            <div class="row between"><b data-charttitle>Ciclo medio</b><span class="tiny muted" data-chartsub></span></div>
+        <div class="keys" data-keys title="Tutte le misure"></div>
+        <div class="side-more">
+          <details class="disclose" data-detailsbox ${settings.liveDetails ? 'open' : ''}><summary>Tutte le misure</summary><div class="metrics" data-metrics></div></details>
+          <div class="panel">
+            <div class="panel-head"><b data-charttitle></b><span class="tiny muted" data-chartsub></span></div>
             <canvas class="ens-canvas" data-chart></canvas>
           </div>
-          <div class="card flat guide-card" style="padding:10px" data-guide></div>
-          <div class="card flat" style="padding:10px;margin-top:8px" data-siterecs></div>
+          <details class="disclose panel guide-card" ${settings.profile === 'medico' ? '' : 'open'}><summary>Guida al punto</summary><div data-guide></div></details>
+          <div class="panel" data-siterecs></div>
         </div>
       </aside>
     </div>
-    <div class="controls">
-      <div class="main-btns">
-        <button class="btn primary start" data-start></button>
-        <button class="btn rec" data-rec></button>
-        <button class="btn" data-grab title="Salva gli ultimi secondi già ascoltati">${icon('back', 'sm')} <span data-grablbl></span></button>
-      </div>
-      <div class="grow">
-        <button class="icon-btn" data-monitor title="Ascolto in cuffia">${icon('headphones')}</button>
-        <div class="level" title="Livello del segnale in ingresso"><i data-level style="width:0%"></i></div>
-        <div class="chips scroll small" data-presets></div>
-        <button class="icon-btn" data-freeze title="Congela la schermata">${icon('snow')}</button>
-        <button class="icon-btn" data-snap title="Salva immagine">${icon('camera')}</button>
-        <button class="icon-btn" data-adjust title="Regolazioni">${icon('sliders')}</button>
-      </div>
-    </div>
+    <footer class="controls">
+      <button class="btn primary start" data-start></button>
+      <button class="rec-btn" data-rec></button>
+      <button class="btn" data-grab title="Salva gli ultimi secondi già ascoltati">${icon('back', 'sm')}<span data-grablbl></span></button>
+      <span class="ctl-sep hide-sm"></span>
+      <button class="select-btn" data-filter title="Filtro e riduzione del rumore"><span class="tiny muted lbl">Filtro</span><b data-filterlbl></b>${icon('chevD', 'sm')}</button>
+      <span class="grow"></span>
+      <div class="level" title="Livello del segnale in ingresso"><i data-level style="width:0%"></i></div>
+      <button class="btn ghost hide-sm" data-monitor title="Ascolto in cuffia">${icon('headphones', 'sm')} Cuffie</button>
+      <button class="btn ghost hide-sm" data-adjust title="Sorgente, livelli e visualizzazione">${icon('sliders', 'sm')} Regolazioni</button>
+    </footer>
   </section>`;
 
   const q = (s) => view.querySelector(s);
@@ -143,10 +141,10 @@ export async function mount(view, params, query) {
   function updateTags() {
     const w = wfConfig(mode);
     const name = presetId === EQ_LIVE_ID ? 'EQ personalizzato' : getPreset(presetId).name;
-    q('[data-scopetag]').textContent = `PCG · ${name}${settings.denoise && mode === 'heart' ? ' · rid. rumore' : ''}`;
-    const res = engine.sampleRate / w.fftSize, rate = engine.sampleRate / w.hop;
-    q('[data-wftag]').textContent = `${w.fMin}–${w.fMax} Hz · ${fmtNum(res, 1)} Hz/bin · ${n0(rate)} col/s`;
-    q('[data-grablbl]').textContent = `Ultimi ${settings.grabSeconds} s`;
+    q('[data-filterlbl]').textContent = `${name}${settings.denoise && mode === 'heart' ? ' · RR' : ''}`;
+    q('[data-filter]').title = `Filtro: ${name}${settings.denoise && mode === 'heart' ? ' con riduzione del rumore' : ''}`;
+    q('[data-wftag]').textContent = `${w.fMin}–${w.fMax} Hz`;
+    q('[data-grablbl]').innerHTML = `<span class="lbl"> Ultimi </span>${settings.grabSeconds} s`;
   }
 
   function syncUrl() {
@@ -158,6 +156,7 @@ export async function mount(view, params, query) {
   // ---------- intestazione: modalità, punto, preset ----------
   function renderMode() {
     view.querySelectorAll('[data-modeseg] button').forEach((b) => b.classList.toggle('on', b.dataset.m === mode));
+    q('[data-plots]').classList.toggle('lung', mode === 'lung');
     q('[data-charttitle]').textContent = mode === 'heart' ? 'Ciclo cardiaco medio' : 'Ciclo respiratorio';
     const ctx = q('[data-ctx]');
     if (ctx) ctx.href = `#/visit/${visit.id}?tab=${mode}`;
@@ -165,20 +164,87 @@ export async function mount(view, params, query) {
 
   function renderSiteBtn() {
     const s = siteById(site);
-    q('[data-sitebtn]').innerHTML = `${icon('pin', 'sm')}<span>${esc(s ? s.full : 'Punto')}</span><small>${esc(s ? s.piece : '')}</small>${icon('chevD', 'sm')}`;
+    q('[data-sitebtn]').innerHTML = `<span class="site-n">${s ? s.n : '·'}</span><span class="site-name"><span class="long">${esc(s ? s.full : 'Punto')}</span><span class="short">${esc(s ? s.name : 'Punto')}</span></span><small class="hide-sm">${esc(s ? s.piece : '')}</small>${icon('chevD', 'sm')}`;
   }
 
-  function renderPresets() {
-    const box = q('[data-presets]');
-    box.innerHTML = '';
-    for (const p of presetsFor(mode)) {
-      const b = el(`<button class="chip ${p.id === presetId ? 'on' : ''}" title="${esc(p.desc || '')}">${esc(p.name)}</button>`);
-      b.onclick = () => setPreset(p.id, true);
-      box.appendChild(b);
-    }
-    const eq = el(`<button class="chip" title="Equalizzatore parametrico">EQ…</button>`);
-    eq.onclick = openEq;
-    box.appendChild(eq);
+  // filtro e riduzione del rumore: un'unica scheda, il pulsante mostra il filtro in uso
+  function openFilterSheet() {
+    const body = el(`<div class="col">
+      <div data-list></div>
+      <label class="check"><input type="checkbox" data-autop ${settings.autoPresetBySite ? 'checked' : ''}> Scegli da solo il filtro consigliato per ogni punto</label>
+      <div class="advice ${mode === 'heart' ? 'info' : ''}">
+        <label class="check"><input type="checkbox" data-dn ${settings.denoise ? 'checked' : ''} ${mode === 'heart' ? '' : 'disabled'}> <b>Riduzione del rumore della stanza</b></label>
+        <div class="small muted">${mode === 'heart' ? 'Attenua il rumore costante (ventole, condizionatori); i toni restano. Si sente e si salva così.' : 'Non disponibile per il torace: il murmure vescicolare verrebbe tolto insieme al rumore.'}</div>
+        <div class="chips small" data-dns></div>
+      </div>
+      <button class="btn" data-eq>${icon('sliders', 'sm')} Equalizzatore parametrico…</button>
+    </div>`);
+    const list = body.querySelector('[data-list]');
+    const renderList = () => {
+      list.innerHTML = presetsFor(mode).map((p) => `<label class="choice ${p.id === presetId ? 'on' : ''}"><input type="radio" name="flt" value="${esc(p.id)}" ${p.id === presetId ? 'checked' : ''}><span><b>${esc(p.name)}</b><span class="small muted">${esc(p.desc || '')}</span></span></label>`).join('')
+        + (presetId === EQ_LIVE_ID ? '<div class="choice on"><span><b>EQ personalizzato</b><span class="small muted">Impostato con l’equalizzatore</span></span></div>' : '');
+    };
+    renderList();
+    list.onchange = (e) => { setPreset(e.target.value, true); renderList(); };
+    body.querySelector('[data-autop]').onchange = (e) => updateSettings({ autoPresetBySite: e.target.checked });
+    const dns = body.querySelector('[data-dns]');
+    const renderDn = () => {
+      dns.innerHTML = '';
+      if (!settings.denoise || mode !== 'heart') return;
+      [['Lieve', 1.0], ['Media', 1.5], ['Forte', 2.2]].forEach(([l, v]) => {
+        const c = el(`<button class="chip ${settings.denoiseStrength === v ? 'on' : ''}">${l}</button>`);
+        c.onclick = () => { updateSettings({ denoiseStrength: v }); engine.setDenoise(true, v); renderDn(); };
+        dns.appendChild(c);
+      });
+    };
+    renderDn();
+    body.querySelector('[data-dn]').onchange = (e) => { updateSettings({ denoise: e.target.checked }); engine.setDenoise(e.target.checked && mode === 'heart', settings.denoiseStrength); updateTags(); renderDn(); };
+    const sh = sheet({ title: 'Filtro', body });
+    body.querySelector('[data-eq]').onclick = () => { sh.close(); openEq(); };
+  }
+
+  // altre funzioni, raccolte in un menu per lasciare libera la barra dei comandi
+  function openMore() {
+    const item = (k, ic, title, sub, state = '') => `<button class="menu-item" data-k="${k}">${icon(ic)}<span class="grow"><b>${title}</b>${sub ? `<span class="small muted">${sub}</span>` : ''}</span>${state}</button>`;
+    const on = (v) => `<span class="state badge ${v ? 'accent' : ''}">${v ? 'Attivo' : 'Spento'}</span>`;
+    const body = el(`<div class="menu-list">
+      ${item('guided', 'list', guided ? 'Interrompi l’esame guidato' : 'Esame guidato', 'Registra tutti i punti in sequenza')}
+      ${item('monitor', 'headphones', 'Ascolto in cuffia', 'Con limitatore di protezione', on(settings.monitor))}
+      ${item('freeze', 'snow', 'Congela la schermata', 'Tasto F', on(frozen))}
+      ${item('snap', 'camera', 'Salva immagine', 'Tracciato e waterfall in PNG')}
+      ${item('guide', 'info', 'Guida al punto', 'Dove appoggiare, cosa ascoltare, misure e ciclo medio')}
+      ${item('input', 'mic', 'Ingresso audio e verifica', 'Tipo di ingresso, diagnostica, verifica guidata')}
+      ${item('adjust', 'sliders', 'Regolazioni', 'Sorgente, livelli e visualizzazione')}
+    </div>`);
+    const sh = sheet({ title: 'Altro', body });
+    body.onclick = (e) => {
+      const b = e.target.closest('[data-k]');
+      if (!b) return;
+      sh.close();
+      ({
+        guided: () => (guided ? stopGuided(true) : startGuided()), monitor: toggleMonitor, freeze: toggleFreeze, snap: snapshot,
+        guide: openGuide, input: openInputSheet, adjust: openAdjust,
+      })[b.dataset.k]();
+    };
+  }
+
+  function toggleMonitor() { updateSettings({ monitor: !settings.monitor }); engine.setMonitor(settings.monitor, settings.volumeDb); renderButtons(); }
+  function toggleFreeze() { frozen = !frozen; scope.frozen = wf.frozen = frozen; if (!frozen) { scope.dirty = wf.dirty = true; } renderButtons(); }
+
+  // misure, ciclo medio e guida al punto in una scheda (sul telefono la colonna laterale non c'è)
+  function openGuide() {
+    const body = el(`<div class="col guide-card">
+      <div class="metrics">${q('[data-metrics]').innerHTML}</div>
+      <div><div class="panel-head"><b>${mode === 'heart' ? 'Ciclo cardiaco medio' : 'Ciclo respiratorio'}</b></div><canvas class="ens-canvas" style="height:130px" data-chart2></canvas></div>
+      <div class="panel">${q('[data-guide]').innerHTML}</div>
+      <div class="panel">${q('[data-siterecs]').innerHTML}</div>
+    </div>`);
+    sheet({ title: (siteById(site) || {}).full || 'Guida', body });
+    requestAnimationFrame(() => {
+      const cv = body.querySelector('[data-chart2]');
+      if (mode === 'heart') drawEnsemble(cv, lastHeart && lastHeart.ensemble);
+      else drawResp(cv, respData(lastLung));
+    });
   }
 
   function setPreset(id, persist) {
@@ -186,7 +252,6 @@ export async function mount(view, params, query) {
     bands = getPreset(id).bands;
     if (engine.running) engine.setBands(bands);
     if (persist) updateSettings(mode === 'lung' ? { presetLung: id } : { presetHeart: id });
-    renderPresets();
     updateTags();
   }
 
@@ -217,15 +282,14 @@ export async function mount(view, params, query) {
       scope.setRate(engine.sampleRate, Math.round(engine.sampleRate / 1000));
       reconfigure();
     }
-    renderMode(); renderSiteBtn(); renderPresets(); renderGuide(); renderSiteRecs(); renderMetrics(); drawChart(); updateTags(); syncUrl();
+    renderMode(); renderSiteBtn(); renderGuide(); renderSiteRecs(); renderMetrics(); drawChart(); updateTags(); syncUrl();
   }
 
   // ---------- guida e registrazioni del punto ----------
   function renderGuide() {
     const s = siteById(site);
     const tips = mode === 'heart' ? HEART_TIPS : LUNG_TIPS;
-    q('[data-guide]').innerHTML = s ? `<b>${esc(s.full)}</b>
-      <div class="small muted">${esc(s.where)}</div>
+    q('[data-guide]').innerHTML = s ? `<div class="small muted">${esc(s.where)}</div>
       <div class="row" style="margin:6px 0"><span class="badge accent">${esc(s.piece)}</span>${s.lobe ? `<span class="badge">${esc(s.lobe)}</span>` : ''}</div>
       ${s.position ? `<div class="small">${esc(s.position)}</div>` : ''}
       ${s.listen ? `<ul class="small">${s.listen.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
@@ -242,36 +306,43 @@ export async function mount(view, params, query) {
   }
 
   // ---------- metriche ----------
-  const card = (cls, k, v, d) => `<div class="metric ${cls}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d || '&nbsp;'}</div></div>`;
-  const sqiCard = (sqi) => `<div class="metric"><div class="k">Qualità segnale</div><div class="v">${sqi ?? '—'}<small>/100</small></div><div class="sqi-bar"><i style="width:${sqi || 0}%"></i></div></div>`;
+  // tre valori chiave sempre visibili; le altre misure in "Tutte le misure"
+  const key = (cls, k, v, d) => `<div class="key ${cls}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d || '&nbsp;'}</div></div>`;
+  const card = (cls, k, v, d) => `<div class="metric ${cls}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d || ''}</div></div>`;
 
   function renderMetrics() {
-    const box = q('[data-metrics]');
+    const keys = q('[data-keys]'), box = q('[data-metrics]');
     if (mode === 'heart') {
       const m = (lastHeart && lastHeart.metrics) || {};
       const extra = [m.clickCount ? `click ${m.clickCount}` : '', m.snapCount ? `schiocco ${m.snapCount}` : ''].filter(Boolean).join(' · ');
       const mur = m.murmurSys && m.murmurDia ? 'Sisto-diast.' : m.murmurSys ? 'Sistolico' : m.murmurDia ? 'Diastolico' : lastHeart ? 'No' : '—';
+      keys.innerHTML = [
+        key('main', 'Freq. cardiaca', m.bpm ? `${n0(m.bpm)}<small>bpm</small>` : '—', m.bpm ? `± ${n0(m.bpmStd || 0)} bpm` : lastHeart && lastHeart.reason ? esc(lastHeart.reason) : running ? 'in ascolto…' : 'avvia l’ascolto'),
+        key(m.rhythm === 'Irregolare' ? 'alert' : '', 'Ritmo', esc(m.rhythm || '—'), m.rrCv !== null && m.rrCv !== undefined ? `variabilità ${n0(m.rrCv * 100)}%` : ''),
+        key(m.murmurSys || m.murmurDia ? 'alert' : '', 'Soffio', mur, esc(m.murmurSysShape || m.murmurDiaShape || m.murmurIntensity || '')),
+      ].join('');
       box.innerHTML = [
-        card('big', 'Frequenza cardiaca', m.bpm ? `${n0(m.bpm)}<small> bpm</small>` : '—', m.bpm ? `± ${n0(m.bpmStd || 0)} · ${esc(m.rhythm)}` : lastHeart && lastHeart.reason ? esc(lastHeart.reason) : 'avvia l\'ascolto'),
-        card(m.rhythm === 'Irregolare' ? 'alert' : '', 'Ritmo', esc(m.rhythm || '—'), m.rrCv !== null && m.rrCv !== undefined ? `variabilità RR ${n0(m.rrCv * 100)}%` : ''),
         card('', 'Sistole / Diastole', m.sysMs ? `${n0(m.sysMs)}<small> / </small>${n0(m.diaMs)}<small> ms</small>` : '—', m.sdRatio ? `rapporto D/S ${fmtNum(m.sdRatio, 2)}` : ''),
         card('', 'Rapporto S1/S2', fmtNum(m.s1s2, 2), m.s1Freq ? `S1 ${n0(m.s1Freq)} Hz · S2 ${n0(m.s2Freq)} Hz` : ''),
         card('', 'Sdoppiamento S2', m.splitMs ? `${n0(m.splitMs)}<small> ms</small>` : lastHeart ? 'no' : '—', m.splitPct ? `${n0(m.splitPct)}% dei battiti` : ''),
-        card(m.s3Pct >= 30 || m.s4Pct >= 30 ? 'alert' : '', 'Toni aggiunti', lastHeart ? `S3 ${m.s3Count || 0} · S4 ${m.s4Count || 0}` : '—', extra || (lastHeart ? 'nessun click' : '')),
-        card(m.murmurSys || m.murmurDia ? 'alert' : '', 'Soffio', mur, esc([m.murmurSysShape || m.murmurDiaShape, m.murmurIntensity].filter(Boolean).join(' · '))),
-        sqiCard(m.sqi),
+        card(m.s3Pct >= 30 || m.s4Pct >= 30 ? 'alert' : '', 'Toni aggiunti', lastHeart ? (m.s3Count || m.s4Count ? `S3 ${m.s3Count || 0} · S4 ${m.s4Count || 0}` : 'nessuno') : '—', extra),
+        card('', 'Soffio: forma', esc(m.murmurSysShape || m.murmurDiaShape || '—'), esc([m.murmurIntensity, m.murmurPitchHz ? `~${n0(m.murmurPitchHz)} Hz` : ''].filter(Boolean).join(' · '))),
+        card('', 'Qualità del segnale', m.sqi !== undefined ? `${m.sqi}<small>/100</small>` : '—', m.snrDb ? `rapporto segnale/rumore ${n0(m.snrDb)} dB` : ''),
       ].join('');
     } else {
       const l = (lastLung && lastLung.metrics) || {};
       const h = (lastHeart && lastHeart.metrics) || {};
+      keys.innerHTML = [
+        key('main', 'Freq. respiratoria', l.rr ? `${n0(l.rr)}<small>atti/min</small>` : '—', l.rr ? `I:E ≈ 1:${fmtNum(l.ieRatio, 1)}` : running ? 'respiri profondi a bocca aperta' : 'avvia l’ascolto'),
+        // finché la frequenza respiratoria non è nota si mostra il conteggio, non "0 per respiro"
+        key(l.cracklesSignificant ? 'alert' : '', 'Crepitii', !lastLung ? '—' : l.cracklesPerBreath !== null && l.cracklesPerBreath !== undefined ? `${fmtNum(l.cracklesPerBreath, 1)}<small>/resp.</small>` : `${l.crackles}<small>in 10 s</small>`, lastLung ? `fini ${l.cracklesFine} · grossolani ${l.cracklesCoarse}` : ''),
+        key(l.wheezes || l.rhonchi ? 'alert' : '', 'Sibili · ronchi', lastLung ? `${l.wheezes} · ${l.rhonchi}` : '—', l.wheezeFreq ? `${n0(l.wheezeFreq)} Hz` : l.polyphonic ? 'polifonici' : ''),
+      ].join('');
       box.innerHTML = [
-        card('big', 'Frequenza respiratoria', l.rr ? `${n0(l.rr)}<small> atti/min</small>` : '—', l.ieRatio ? `I:E ≈ 1:${fmtNum(l.ieRatio, 1)} (indicativo)` : 'respira profondamente a bocca aperta'),
-        card(l.cracklesSignificant ? 'alert' : '', 'Crepitii', lastLung ? `${fmtNum(l.cracklesPerBreath ?? 0, 1)}<small> /respiro</small>` : '—', lastLung ? `fini ${l.cracklesFine} · grossolani ${l.cracklesCoarse}` : ''),
-        card(l.wheezes ? 'alert' : '', 'Sibili', lastLung ? `${l.wheezes}` : '—', l.wheezeFreq ? `${n0(l.wheezeFreq)} Hz · ${n0(l.wheezeDurPct)}% del tempo` : ''),
-        card(l.rhonchi ? 'alert' : '', 'Ronchi', lastLung ? `${l.rhonchi}` : '—', l.polyphonic ? 'polifonici' : ''),
         card('', 'Murmure', l.intensityDb !== undefined && l.intensityDb !== null ? `${n0(l.intensityDb)}<small> dB</small>` : '—', l.dynamicDb ? `dinamica respiro ${n0(l.dynamicDb)} dB` : ''),
-        card('', 'Freq. cardiaca', h.bpm ? `${n0(h.bpm)}<small> bpm</small>` : '—', l.toneHz ? `tono di disturbo ${l.toneHz} Hz` : ''),
-        sqiCard(l.sqi),
+        card('', 'Sibili: durata', l.wheezes ? `${n0(l.wheezeDurPct)}<small>% del tempo</small>` : '—', ''),
+        card('', 'Frequenza cardiaca', h.bpm ? `${n0(h.bpm)}<small> bpm</small>` : '—', l.toneHz ? `tono di disturbo ${l.toneHz} Hz` : ''),
+        card('', 'Qualità del segnale', l.sqi !== undefined ? `${l.sqi}<small>/100</small>` : '—', ''),
       ].join('');
     }
   }
@@ -281,26 +352,28 @@ export async function mount(view, params, query) {
     if (!cv.offsetParent) return;
     if (mode === 'heart') {
       drawEnsemble(cv, lastHeart && lastHeart.ensemble);
-      q('[data-chartsub]').textContent = lastHeart && lastHeart.ensemble ? 'inviluppo d\'ampiezza, ultimi 8 s' : '';
+      q('[data-chartsub]').textContent = lastHeart && lastHeart.ensemble ? 'ultimi 8 s' : '';
     } else {
       drawResp(cv, respData(lastLung));
-      q('[data-chartsub]').textContent = lastLung ? 'ultimi 10 s · ▲ respiri · | crepitii' : '';
+      q('[data-chartsub]').textContent = lastLung ? 'ultimi 10 s' : '';
     }
   }
 
   // ---------- pulsanti ----------
   function renderButtons() {
     const st = q('[data-start]');
-    st.innerHTML = running ? `${icon('stop', 'sm')} Ferma` : starting ? 'Avvio…' : `${icon('play', 'sm')} Avvia`;
+    st.innerHTML = running ? `${icon('stop', 'sm')}<span class="lbl">Ferma</span>` : starting ? '<span class="lbl">Avvio…</span>' : `${icon('play', 'sm')}<span class="lbl">Avvia</span>`;
+    st.title = running ? 'Ferma l’ascolto (barra spaziatrice)' : 'Avvia l’ascolto (barra spaziatrice)';
     st.classList.toggle('primary', !running);
     st.disabled = starting;
     const rb = q('[data-rec]');
-    rb.innerHTML = recording ? `${icon('stop', 'sm')} <span data-rectime>0:00</span>` : `${icon('rec', 'sm')} Registra`;
+    rb.innerHTML = recording ? '<span class="dot"></span><span data-rectime>0:00</span>' : '<span class="dot"></span>Registra';
+    rb.title = 'Registra (tasto R)';
     rb.classList.toggle('recording', recording);
     rb.disabled = !running || !!guided;
     q('[data-grab]').disabled = !running || recording;
     q('[data-monitor]').classList.toggle('on', settings.monitor);
-    q('[data-freeze]').classList.toggle('on', frozen);
+    q('[data-frozen]').classList.toggle('hidden', !frozen);
     q('[data-guided]').disabled = recording;
     renderOverlay();
   }
@@ -392,11 +465,28 @@ export async function mount(view, params, query) {
         <button class="btn" data-adj>${icon('sliders', 'sm')} Cambia ingresso</button>
         <button class="btn" data-copy>${icon('file', 'sm')} Copia diagnostica</button>
       </div>
+      <div class="col" style="gap:6px">
+        <button class="btn sm" data-chan>${icon('mic', 'sm')} Controlla il doppio microfono (2 s)</button>
+        <div class="small" data-chanres>${lastChannelProbe ? esc(lastChannelProbe.verdict.text) : 'Verifica se il telefono dà al browser due microfoni separati. Durante la prova parla normalmente vicino al telefono.'}</div>
+      </div>
       <div class="tiny muted">La diagnostica contiene il modello del browser e i nomi degli ingressi audio (possono includere il nome di un dispositivo), nessun dato dei pazienti.</div>
     </div>`);
     const sh = sheet({ title: 'Ingresso audio', body });
     body.querySelector('[data-adj]').onclick = () => { sh.close(); openAdjust(); };
     body.querySelector('[data-check]').onclick = () => { sh.close(); openCheck(); };
+    body.querySelector('[data-chan]').onclick = async (e) => {
+      const btn = e.currentTarget, res = body.querySelector('[data-chanres]');
+      btn.disabled = true;
+      res.textContent = 'Parla normalmente vicino al telefono…';
+      const was = running && engine.source === 'mic';
+      try {
+        if (was) await stop(); // un solo uso del microfono alla volta
+        const p = await probeChannels(settings.deviceId);
+        res.textContent = `${p.verdict.text} Ora è inclusa nella diagnostica.`;
+      } catch (err) { res.textContent = `Prova non riuscita: ${err.message || err.name}`; }
+      if (was) await start();
+      btn.disabled = false;
+    };
     body.querySelector('[data-copy]').onclick = async () => {
       const txt = await diagnostics();
       try {
@@ -730,7 +820,7 @@ export async function mount(view, params, query) {
   function openEq() {
     const ed = openEqEditor({
       bands, fs: engine.sampleRate,
-      onChange: (b) => { bands = b; presetId = EQ_LIVE_ID; if (engine.running) engine.setBands(bands); renderPresets(); updateTags(); },
+      onChange: (b) => { bands = b; presetId = EQ_LIVE_ID; if (engine.running) engine.setBands(bands); updateTags(); },
     });
     ed.onSaved((p) => { setPreset(p.id, true); });
   }
@@ -745,10 +835,9 @@ export async function mount(view, params, query) {
       <div class="seg" data-src><button data-v="mic">${icon('mic', 'sm')} Fonendoscopio</button><button data-v="demo">${icon('activity', 'sm')} Simulatore</button><button data-v="file">${icon('file', 'sm')} File</button></div>
       <div data-srcopts></div>
       <h4>Livelli</h4>
-      <label class="field"><span>Guadagno d'ingresso: <b data-gv>${settings.gainDb} dB</b></span><input type="range" min="-12" max="40" step="1" value="${settings.gainDb}" data-gain></label>
-      <label class="field"><span>Volume cuffie: <b data-vv>${settings.volumeDb} dB</b> (limitatore di protezione sempre attivo)</span><input type="range" min="-20" max="30" step="1" value="${settings.volumeDb}" data-vol></label>
-      <label class="check"><input type="checkbox" data-dn ${settings.denoise ? 'checked' : ''}> Riduzione rumore ambientale (solo cuore)</label>
-      <div class="chips small" data-dns></div>
+      <label class="field"><span>Guadagno dell’ascolto: <b data-gv>${settings.gainDb} dB</b></span><input type="range" min="-12" max="40" step="1" value="${settings.gainDb}" data-gain></label>
+      <label class="field"><span>Volume cuffie: <b data-vv>${settings.volumeDb} dB</b> · limitatore di protezione sempre attivo</span><input type="range" min="-20" max="30" step="1" value="${settings.volumeDb}" data-vol></label>
+      <details class="disclose"><summary>Visualizzazione avanzata</summary><div class="col">
       <h4>Waterfall</h4>
       <div class="field"><span>Dettaglio / velocità di aggiornamento</span><div class="seg" data-detail>
         ${Object.keys(WF_DETAIL[mode]).map((k) => `<button data-v="${k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div></div>
@@ -769,8 +858,7 @@ export async function mount(view, params, query) {
       <h4>Tracciato</h4>
       <label class="check"><input type="checkbox" data-env ${settings.showEnvelope ? 'checked' : ''}> Mostra inviluppo dei toni</label>
       <label class="check"><input type="checkbox" data-raw ${settings.showRaw ? 'checked' : ''}> Mostra anche il segnale grezzo</label>
-      <label class="check"><input type="checkbox" data-autop ${settings.autoPresetBySite ? 'checked' : ''}> Filtro consigliato automatico per focolaio</label>
-      <button class="btn" data-eq>${icon('sliders', 'sm')} Equalizzatore parametrico…</button>
+      </div></details>
     </div>`);
     const restartIfRunning = async () => { if (running) { await stop(); await start(); } };
     const renderSrc = () => {
@@ -808,13 +896,6 @@ export async function mount(view, params, query) {
     body.querySelectorAll('[data-src] button').forEach((b) => { b.onclick = () => { updateSettings({ source: b.dataset.v }); renderSrc(); if (b.dataset.v !== 'file' || fileSource) restartIfRunning(); renderOverlay(); }; });
     body.querySelector('[data-gain]').oninput = (e) => { const v = +e.target.value; body.querySelector('[data-gv]').textContent = `${v} dB`; updateSettings({ gainDb: v }); engine.setGain(v); };
     body.querySelector('[data-vol]').oninput = (e) => { const v = +e.target.value; body.querySelector('[data-vv]').textContent = `${v} dB`; updateSettings({ volumeDb: v }); engine.setMonitor(settings.monitor, v); };
-    body.querySelector('[data-dn]').onchange = (e) => { updateSettings({ denoise: e.target.checked }); engine.setDenoise(e.target.checked && mode === 'heart', settings.denoiseStrength); updateTags(); };
-    const dns = body.querySelector('[data-dns]');
-    [['Lieve', 1.0], ['Media', 1.5], ['Forte', 2.2]].forEach(([l, v]) => {
-      const c = el(`<button class="chip ${settings.denoiseStrength === v ? 'on' : ''}">${l}</button>`);
-      c.onclick = () => { updateSettings({ denoiseStrength: v }); dns.querySelectorAll('.chip').forEach((x) => x.classList.remove('on')); c.classList.add('on'); engine.setDenoise(settings.denoise && mode === 'heart', v); };
-      dns.appendChild(c);
-    });
     const wkey = mode === 'lung' ? 'wfLung' : 'wfHeart';
     const setW = (patch) => { updateSettings({ [wkey]: patch }); if (running) reconfigure(); else updateTags(); };
     const detail = body.querySelector('[data-detail]');
@@ -847,9 +928,7 @@ export async function mount(view, params, query) {
     body.querySelector('[data-smooth]').onchange = (e) => { updateSettings({ smoothWaterfall: e.target.checked }); wf.smooth = e.target.checked; };
     body.querySelector('[data-env]').onchange = (e) => { updateSettings({ showEnvelope: e.target.checked }); scope.showEnv = e.target.checked && mode === 'heart'; };
     body.querySelector('[data-raw]').onchange = (e) => { updateSettings({ showRaw: e.target.checked }); scope.showRaw = e.target.checked; };
-    body.querySelector('[data-autop]').onchange = (e) => updateSettings({ autoPresetBySite: e.target.checked });
-    body.querySelector('[data-eq]').onclick = () => { sh.close(); openEq(); };
-    const sh = sheet({ title: 'Regolazioni', body, wide: true });
+    sheet({ title: 'Regolazioni', body, wide: true });
   }
 
   function snapshot() {
@@ -872,30 +951,22 @@ export async function mount(view, params, query) {
   q('[data-start]').onclick = () => (running ? stop() : start());
   q('[data-rec]').onclick = () => (recording ? stopRecording() : startRecording());
   q('[data-grab]').onclick = grab;
-  q('[data-monitor]').onclick = () => { updateSettings({ monitor: !settings.monitor }); engine.setMonitor(settings.monitor, settings.volumeDb); renderButtons(); };
-  q('[data-freeze]').onclick = () => { frozen = !frozen; scope.frozen = wf.frozen = frozen; if (!frozen) { scope.dirty = wf.dirty = true; } renderButtons(); };
-  q('[data-snap]').onclick = snapshot;
+  q('[data-monitor]').onclick = toggleMonitor;
   q('[data-adjust]').onclick = openAdjust;
+  q('[data-filter]').onclick = openFilterSheet;
+  q('[data-more]').onclick = openMore;
   q('[data-qpill]').onclick = openInputSheet;
   q('[data-guided]').onclick = () => (guided ? stopGuided(true) : startGuided());
-  q('[data-info]').onclick = () => {
-    const body = el(`<div class="col guide-card"></div>`);
-    body.innerHTML = q('[data-guide]').innerHTML + `<div style="margin-top:8px">${q('[data-siterecs]').innerHTML}</div>
-      <b class="small" style="margin-top:8px">${mode === 'heart' ? 'Ciclo cardiaco medio' : 'Ciclo respiratorio'}</b><canvas class="ens-canvas" style="height:130px" data-chart2></canvas>`;
-    sheet({ title: 'Guida', body });
-    requestAnimationFrame(() => {
-      const cv = body.querySelector('[data-chart2]');
-      if (mode === 'heart') drawEnsemble(cv, lastHeart && lastHeart.ensemble);
-      else drawResp(cv, respData(lastLung));
-    });
-  };
+  // sul telefono le misure stanno in una scheda: si apre toccando i valori chiave
+  q('[data-keys]').onclick = () => { if (!q('.side-more').offsetParent) openGuide(); };
+  q('[data-detailsbox]').ontoggle = (e) => updateSettings({ liveDetails: e.target.open });
 
   const onKey = (e) => {
     if (e.target.closest('input, textarea, select') || document.querySelector('.sheet-wrap')) return;
     if (e.code === 'Space') { e.preventDefault(); running ? stop() : start(); }
     else if (e.key === 'r' || e.key === 'R') recording ? stopRecording() : startRecording();
     else if (e.key === 'g' || e.key === 'G') grab();
-    else if (e.key === 'f' || e.key === 'F') q('[data-freeze]').click();
+    else if (e.key === 'f' || e.key === 'F') toggleFreeze();
   };
   document.addEventListener('keydown', onKey);
 
@@ -908,7 +979,7 @@ export async function mount(view, params, query) {
   const onVis = () => { if (document.visibilityState === 'visible' && running) requestWake(); };
   document.addEventListener('visibilitychange', onVis);
 
-  renderMode(); renderSiteBtn(); renderPresets(); renderGuide(); renderSiteRecs(); renderMetrics(); renderButtons(); updateTags(); syncUrl();
+  renderMode(); renderSiteBtn(); renderGuide(); renderSiteRecs(); renderMetrics(); renderButtons(); updateTags(); syncUrl();
   if (query.autostart === '1') start();
 
   return async () => {

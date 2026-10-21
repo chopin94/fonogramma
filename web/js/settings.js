@@ -43,6 +43,7 @@ export const DEFAULTS = {
   smoothWaterfall: false,
   showEnvelope: true,
   showRaw: false,
+  liveDetails: false, // schermata d'ascolto: "Tutte le misure" aperta
   loopSeconds: 30,
   grabSeconds: 15,
   maxRecSeconds: 180,
@@ -92,5 +93,5 @@ export function applyTheme() {
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = dark ? '#0a0f1c' : '#f4f6fb';
+  if (meta) meta.content = dark ? '#161b22' : '#ffffff';
 }

@@ -42,14 +42,16 @@ export const platform = () => {
 
 export function inspectInput(stream, ctx) {
   const track = stream.getAudioTracks()[0];
-  let s = {};
+  let s = {}, caps = {};
   try { s = track.getSettings() || {}; } catch {}
+  try { caps = (track.getCapabilities && track.getCapabilities()) || {}; } catch {}
   return {
     label: track.label || '',
     type: classifyInput(track.label),
     trackRate: s.sampleRate || null,
     ctxRate: ctx.sampleRate,
     channels: s.channelCount || null,
+    maxChannels: (caps.channelCount && caps.channelCount.max) || null,
     // true = il browser dichiara l'elaborazione ancora attiva nonostante la richiesta di toglierla
     processing: { echoCancellation: s.echoCancellation, noiseSuppression: s.noiseSuppression, autoGainControl: s.autoGainControl },
     latencyMs: Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000) || null,
@@ -101,6 +103,50 @@ export function worstLevel(advice) {
 
 const yesNo = (v) => (v === true ? 'sì' : v === false ? 'no' : 'n.d.');
 
+// Doppio microfono: chiede al browser due canali grezzi dallo stesso ingresso e per
+// 2 s misura se sono davvero due microfoni diversi o lo stesso segnale copiato.
+// Due microfoni distinti potrebbero servire come riferimento per togliere il rumore.
+export let lastChannelProbe = null;
+export async function probeChannels(deviceId = '') {
+  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } };
+  if (deviceId) audio.deviceId = { exact: deviceId };
+  const stream = await navigator.mediaDevices.getUserMedia({ audio });
+  const track = stream.getAudioTracks()[0];
+  let s = {}, caps = {};
+  try { s = track.getSettings() || {}; } catch {}
+  try { caps = (track.getCapabilities && track.getCapabilities()) || {}; } catch {}
+  const ctx = new AudioContext();
+  let ll = 0, rr = 0, lr = 0;
+  try {
+    if (ctx.state === 'suspended') await ctx.resume();
+    const split = ctx.createChannelSplitter(2);
+    ctx.createMediaStreamSource(stream).connect(split);
+    const an = [0, 1].map((ch) => { const a = new AnalyserNode(ctx, { fftSize: 2048 }); split.connect(a, ch); return a; });
+    const L = new Float32Array(2048), R = new Float32Array(2048);
+    for (let k = 0; k < 40; k++) {
+      await new Promise((r) => setTimeout(r, 50));
+      an[0].getFloatTimeDomainData(L);
+      an[1].getFloatTimeDomainData(R);
+      for (let i = 0; i < 2048; i++) { ll += L[i] * L[i]; rr += R[i] * R[i]; lr += L[i] * R[i]; }
+    }
+  } finally {
+    stream.getTracks().forEach((t) => t.stop());
+    try { await ctx.close(); } catch {}
+  }
+  const db = (v) => Math.round(10 * Math.log10(v + 1e-20));
+  const corr = lr / Math.sqrt(ll * rr + 1e-30);
+  const out = {
+    channels: s.channelCount || null, maxChannels: (caps.channelCount && caps.channelCount.max) || null,
+    levelDb: [db(ll / 81920), db(rr / 81920)], corr: Math.round(corr * 100) / 100, label: track.label || '',
+  };
+  const diff = Math.abs(out.levelDb[0] - out.levelDb[1]);
+  if (out.channels === 1 || out.levelDb[1] < -110) out.verdict = { level: 'info', text: 'Il browser dà un solo canale: il doppio microfono non è utilizzabile da qui.' };
+  else if (corr > 0.98 && diff < 1) out.verdict = { level: 'info', text: 'Due canali, ma con lo stesso segnale copiato: i microfoni non sono separabili.' };
+  else out.verdict = { level: 'ok', text: `Due canali diversi (correlazione ${out.corr}, differenza ${diff} dB): il doppio microfono potrebbe servire come riferimento per togliere il rumore.` };
+  lastChannelProbe = out;
+  return out;
+}
+
 // Testo da copiare e inviare a chi sviluppa l'app: nessun dato dei pazienti.
 export function diagnosticsText(info, { kind, inputs = [], advice = [], check = null } = {}) {
   const L = [
@@ -110,12 +156,14 @@ export function diagnosticsText(info, { kind, inputs = [], advice = [], check = 
   ];
   if (info) {
     L.push(`Ingresso: "${info.label}" → ${INPUT_TYPES[info.type].name}`);
-    L.push(`Campionamento: traccia ${info.trackRate || 'n.d.'} Hz, motore ${info.ctxRate} Hz, canali ${info.channels || 'n.d.'}`);
+    L.push(`Campionamento: traccia ${info.trackRate || 'n.d.'} Hz, motore ${info.ctxRate} Hz, canali ${info.channels || 'n.d.'} (al massimo ${info.maxChannels || 'n.d.'})`);
     L.push(`Elaborazioni dichiarate: eco ${yesNo(info.processing.echoCancellation)}, rumore ${yesNo(info.processing.noiseSuppression)}, volume automatico ${yesNo(info.processing.autoGainControl)}`);
     L.push(`Latenza: ${info.latencyMs ?? 'n.d.'} ms`);
   } else L.push('Ingresso: non avviato');
   if (inputs.length) L.push(`Ingressi disponibili: ${inputs.map((d) => `"${d.label || 'senza nome'}" (${INPUT_TYPES[classifyInput(d.label)].short})`).join('; ')}`);
   if (check) L.push(...check);
+  const p = lastChannelProbe;
+  if (p) L.push(`Doppio microfono: "${p.label}" canali ${p.channels || 'n.d.'} (max ${p.maxChannels || 'n.d.'}), livelli ${p.levelDb.join(' / ')} dB, correlazione ${p.corr} → ${p.verdict.text}`);
   if (advice.length) L.push('Avvisi:', ...advice.map((a) => `- [${a.level}] ${a.text}`));
   return L.join('\n');
 }
