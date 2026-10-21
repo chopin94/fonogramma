@@ -5,6 +5,8 @@ import { HEART_SITES, LUNG_SITES } from '../sites.js';
 import { icon } from '../ui/icons.js';
 import { loadRecordingAudio } from '../store/audio.js';
 import { analyzeSamples } from '../audio/analyzer.js';
+import { processSignal } from '../audio/player.js';
+import { recordingFilter } from '../presets.js';
 import { renderThumb } from '../ui/charts.js';
 import { settings } from '../settings.js';
 import { heartSummaryLines, lungSummaryLines, heartFindingText, lungFindingText } from './common.js';
@@ -74,7 +76,7 @@ export async function mount(view, [id]) {
   let alive = true;
   const chosen = [...HEART_SITES, ...LUNG_SITES].map((s) => recs.find((r) => r.site === s.id)).filter(Boolean).slice(0, 10);
   if (chosen.length) {
-    box.innerHTML = `<h2>Tracciati (primi 8 s · fonocardiogramma e spettrogramma)</h2><div class="thumbs" data-grid></div>`;
+    box.innerHTML = `<h2>Tracciati (primi 8 s · fonocardiogramma e spettrogramma, filtrati come in auscultazione)</h2><div class="thumbs" data-grid></div>`;
     const grid = box.querySelector('[data-grid]');
     for (let i = 0; i < chosen.length && alive; i++) {
       const r = chosen[i];
@@ -82,7 +84,8 @@ export async function mount(view, [id]) {
       try {
         const audio = await loadRecordingAudio(r);
         const shown = audio.samples.slice(0, Math.round(THUMB_SECONDS * audio.sampleRate));
-        const res = await analyzeSamples(shown, audio.sampleRate, r.kind);
+        const heard = await processSignal(shown, audio.sampleRate, recordingFilter(r));
+        const res = await analyzeSamples(shown, audio.sampleRate, r.kind, heard === shown ? null : heard);
         if (!alive) break;
         const h = res.heart;
         const url = renderThumb({ overview: res.overview, spec: res.spec, markers: r.kind === 'lung' ? null : { s1: h.s1, s2: h.s2, s3: h.s3, s4: h.s4, clicks: h.clicks, snaps: h.snaps }, lutName: settings.colormap });

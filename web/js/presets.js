@@ -44,6 +44,20 @@ export function getPreset(id) {
 
 export const EQ_LIVE_ID = 'eq-live';
 
+// Elaborazione con cui è stata ascoltata una registrazione: valgono le bande salvate con
+// la registrazione, anche se nel frattempo il preset è stato modificato o eliminato.
+export const REC_FILTER_ID = 'rec';
+export function recordingFilter(rec) {
+  const p = findPreset(rec.preset);
+  const base = rec.preset === EQ_LIVE_ID ? 'EQ personalizzato' : p ? p.name : 'Filtro della registrazione';
+  return {
+    id: REC_FILTER_ID,
+    name: `Come in auscultazione (${base}${rec.denoise ? ' + rid. rumore' : ''})`,
+    bands: Array.isArray(rec.bands) ? rec.bands : getPreset(rec.preset).bands,
+    denoise: rec.denoise || 0,
+  };
+}
+
 export function presetsFor(mode) {
   return allPresets().filter((p) => p.mode === mode || p.mode === 'any' || p.custom);
 }

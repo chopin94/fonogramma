@@ -95,16 +95,10 @@ function cycleSpectrogram(spec, h, bins = 200) {
   return { cols: out, ncols: bins, rows, window: W, pre, s2: (h.metrics.sysMs || 300) / 1000, count: cnt, fMin: spec.fMin, fMax: spec.fMax, scale: spec.scale };
 }
 
-function analyzeRecording({ samples, fs, kind }) {
-  const dh = decimateOffline(samples, fs, HEART_BAND.lo, HEART_BAND.hi, HEART_BAND.fs);
-  const h = analyzeHeart(dh.y, dh.fs);
-  let l = null;
-  if (kind === 'lung') {
-    const dl = decimateOffline(samples, fs, LUNG_BAND.lo, LUNG_BAND.hi, LUNG_BAND.fs);
-    l = analyzeLung(dl.y, dl.fs, { heartTimes: heartTimes(h) });
-  }
+// Tracciato, spettrogramma e spettrogramma medio del ciclo del segnale mostrato.
+function display(x, fs, kind, h) {
   const lung = kind === 'lung';
-  const spec = spectrogram(samples, fs, {
+  const spec = spectrogram(x, fs, {
     fftSize: nextPow2((lung ? 0.021 : 0.043) * fs),
     hop: Math.round(fs / 250),
     rows: 256,
@@ -113,9 +107,24 @@ function analyzeRecording({ samples, fs, kind }) {
     scale: 'lin',
     maxCols: 7000,
   });
-  const ov = overview(samples, fs);
-  const cyc = lung ? null : cycleSpectrogram(spec, h);
-  return { heart: h, lung: l, spec, overview: ov, cycleSpec: cyc, duration: samples.length / fs, fs };
+  return { spec, overview: overview(x, fs), cycleSpec: lung || !h ? null : cycleSpectrogram(spec, h) };
+}
+
+function analyzeRecording({ samples, fs, kind, view }) {
+  const dh = decimateOffline(samples, fs, HEART_BAND.lo, HEART_BAND.hi, HEART_BAND.fs);
+  const h = analyzeHeart(dh.y, dh.fs);
+  let l = null;
+  if (kind === 'lung') {
+    const dl = decimateOffline(samples, fs, LUNG_BAND.lo, LUNG_BAND.hi, LUNG_BAND.fs);
+    l = analyzeLung(dl.y, dl.fs, { heartTimes: heartTimes(h) });
+  }
+  return { heart: h, lung: l, ...display(view || samples, fs, kind, h), duration: samples.length / fs, fs };
+}
+
+function transfers(res) {
+  const tr = [res.spec.cols.buffer, res.overview.min.buffer, res.overview.max.buffer];
+  if (res.cycleSpec) tr.push(res.cycleSpec.cols.buffer);
+  return tr;
 }
 
 onmessage = (e) => {
@@ -127,12 +136,10 @@ onmessage = (e) => {
     };
     return;
   }
-  if (m.type === 'analyze') {
+  if (m.type === 'analyze' || m.type === 'view') {
     try {
-      const res = analyzeRecording(m);
-      const tr = [res.spec.cols.buffer, res.overview.min.buffer, res.overview.max.buffer];
-      if (res.cycleSpec) tr.push(res.cycleSpec.cols.buffer);
-      postMessage({ type: 'analyzed', id: m.id, res }, tr);
+      const res = m.type === 'analyze' ? analyzeRecording(m) : display(m.samples, m.fs, m.kind, m.heart);
+      postMessage({ type: 'analyzed', id: m.id, res }, transfers(res));
     } catch (err) {
       postMessage({ type: 'analyzed', id: m.id, error: String(err && err.message || err) });
     }

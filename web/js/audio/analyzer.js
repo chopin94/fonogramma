@@ -22,13 +22,25 @@ function ensure() {
   return worker;
 }
 
-export function analyzeSamples(samples, fs, kind) {
+function call(msg) {
   const w = ensure();
   const id = ++seq;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    w.postMessage({ type: 'analyze', id, samples, fs, kind });
+    w.postMessage({ ...msg, id });
   });
+}
+
+// Analisi sul segnale originale; tracciato e spettrogramma su "view" (il segnale
+// filtrato come lo si ascolta), se indicato.
+export function analyzeSamples(samples, fs, kind, view = null) {
+  return call({ type: 'analyze', samples, fs, kind, view });
+}
+
+// Solo tracciato e spettrogramma (es. quando si cambia filtro di ascolto).
+export function viewSamples(samples, fs, kind, heart) {
+  const h = heart && { ok: heart.ok, beats: heart.beats.map((b) => ({ t: b.t, rr: b.rr })), metrics: { sysMs: heart.metrics.sysMs } };
+  return call({ type: 'view', samples, fs, kind, heart: h });
 }
 
 const r1 = (v, d = 0) => (v === null || v === undefined || !Number.isFinite(v) ? null : Number(v.toFixed(d)));

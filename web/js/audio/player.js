@@ -3,6 +3,37 @@
 import { buildChain, makeLimiter, dbToGain } from './graph.js';
 import { wsola } from './wsola.js';
 
+const DENOISE_URL = new URL('./worklets/denoise.js', import.meta.url);
+const DENOISE_DELAY = 1024; // ritardo del worklet di riduzione rumore (una finestra FFT)
+
+// Applica a tutta la registrazione la stessa elaborazione dell'auscultazione dal vivo
+// (riduzione rumore, se era attiva, poi filtri): è il segnale che si ascolta e si vede.
+export async function processSignal(samples, fs, { bands = [], denoise = 0 } = {}) {
+  if (!bands.length && !denoise) return samples;
+  const pad = denoise ? DENOISE_DELAY : 0;
+  const len = Math.max(1, samples.length + pad);
+  const oc = new OfflineAudioContext(1, len, fs);
+  const buf = oc.createBuffer(1, len, fs);
+  buf.copyToChannel(samples, 0);
+  const src = new AudioBufferSourceNode(oc, { buffer: buf });
+  const ch = buildChain(oc, bands);
+  let head = ch.input;
+  if (denoise) {
+    try {
+      await oc.audioWorklet.addModule(DENOISE_URL);
+      const dn = new AudioWorkletNode(oc, 'pcg-denoise', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      dn.port.postMessage({ enabled: true, strength: denoise });
+      dn.connect(ch.input);
+      head = dn;
+    } catch (e) { console.warn('Riduzione rumore non disponibile in riproduzione:', e); }
+  }
+  src.connect(head);
+  ch.output.connect(oc.destination);
+  src.start();
+  const out = (await oc.startRendering()).getChannelData(0);
+  return head === ch.input ? out.slice(0, samples.length) : out.slice(pad, pad + samples.length);
+}
+
 export class LoopPlayer {
   constructor() {
     this.ctx = null;
@@ -23,18 +54,21 @@ export class LoopPlayer {
   }
 
   async render(samples, fs, a, b, bands, speed, normalize) {
-    const pre = Math.min(a, Math.round(0.3 * fs));
-    const seg = samples.subarray(a - pre, b);
-    const oc = new OfflineAudioContext(1, Math.max(1, seg.length), fs);
-    const buf = oc.createBuffer(1, Math.max(1, seg.length), fs);
-    buf.copyToChannel(seg, 0);
-    const src = new AudioBufferSourceNode(oc, { buffer: buf });
-    const ch = buildChain(oc, bands);
-    src.connect(ch.input);
-    ch.output.connect(oc.destination);
-    src.start();
-    const rendered = await oc.startRendering();
-    let y = rendered.getChannelData(0).slice(pre);
+    let y;
+    if (bands.length) {
+      const pre = Math.min(a, Math.round(0.3 * fs));
+      const seg = samples.subarray(a - pre, b);
+      const oc = new OfflineAudioContext(1, Math.max(1, seg.length), fs);
+      const buf = oc.createBuffer(1, Math.max(1, seg.length), fs);
+      buf.copyToChannel(seg, 0);
+      const src = new AudioBufferSourceNode(oc, { buffer: buf });
+      const ch = buildChain(oc, bands);
+      src.connect(ch.input);
+      ch.output.connect(oc.destination);
+      src.start();
+      const rendered = await oc.startRendering();
+      y = rendered.getChannelData(0).slice(pre);
+    } else y = samples.slice(a, b); // segnale già elaborato con processSignal
     if (speed !== 1) y = wsola(y, speed, fs);
     if (normalize) {
       let pk = 0;

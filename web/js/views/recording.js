@@ -4,11 +4,11 @@
 import { esc, el, toast, sheet, confirmDialog, fmtNum, fmtDur, fmtDateTime, patientName, downloadBlob, safeName } from '../util.js';
 import { settings } from '../settings.js';
 import { siteName, siteById, HEART_SITES, LUNG_SITES } from '../sites.js';
-import { allPresets, findPreset, getPreset } from '../presets.js';
+import { allPresets, getPreset, recordingFilter, REC_FILTER_ID } from '../presets.js';
 import * as repo from '../store/repo.js';
 import { loadRecordingAudio, loadRecordingBlob } from '../store/audio.js';
-import { analyzeSamples, summarize } from '../audio/analyzer.js';
-import { LoopPlayer } from '../audio/player.js';
+import { analyzeSamples, viewSamples, summarize } from '../audio/analyzer.js';
+import { LoopPlayer, processSignal } from '../audio/player.js';
 import { encodeWav } from '../audio/wav.js';
 import { drawWaveView, drawSpecView, buildSpecImage, specLevels, drawEnsemble, drawProfile, drawCycleSpec, drawResp } from '../ui/charts.js';
 import { fitCanvas } from '../ui/canvas.js';
@@ -21,23 +21,19 @@ export async function mount(view, [id]) {
   let rec = await repo.getRecording(id);
   if (!rec) { view.innerHTML = `<div class="page"><div class="empty">Registrazione non trovata.</div></div>`; return; }
   const patient = rec.patientId ? await repo.getPatient(rec.patientId) : null;
-  // filtro usato in registrazione: se non è più un preset esistente (EQ dal vivo,
-  // preset personale eliminato) si usano le bande salvate con la registrazione
-  const REC_FILTER = 'rec';
-  const recFilter = !findPreset(rec.preset) && Array.isArray(rec.bands)
-    ? { id: REC_FILTER, name: rec.preset === 'eq-live' ? 'EQ personalizzato' : 'Filtro della registrazione', bands: rec.bands }
-    : null;
-  const filters = recFilter ? [recFilter, ...allPresets()] : allPresets();
+  // si riascolta e si vede come in auscultazione: stesso filtro e stessa riduzione rumore
+  const recFilter = recordingFilter(rec);
+  const filters = [recFilter, ...allPresets()];
   const filterById = (id) => filters.find((f) => f.id === id) || getPreset(id);
   view.innerHTML = `<div class="page">
     <div class="row between" style="align-items:flex-start">
       <div class="grow">
         <div class="small muted">${rec.visitId ? `<a href="#/visit/${esc(rec.visitId)}?tab=${rec.kind === 'lung' ? 'lung' : 'heart'}">${icon('chevL', 'sm')} Visita</a> · ` : ''}${esc(patientName(patient))}</div>
         <h1>${icon(rec.kind === 'lung' ? 'lungs' : 'heart')} ${esc(rec.label || siteName(rec.site))}</h1>
-        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc((recFilter || getPreset(rec.preset)).name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz</div>
+        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc(recFilter.name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz</div>
       </div>
       <div class="row">
-        <button class="btn sm" data-wav>${icon('download', 'sm')} WAV</button>
+        <button class="btn sm" data-wav title="Scarica l'audio come lo ascolti (filtro scelto; solo la selezione, se c'è)">${icon('download', 'sm')} WAV</button>
         <button class="btn sm" data-more>${icon('list', 'sm')} Altro</button>
       </div>
     </div>
@@ -55,7 +51,7 @@ export async function mount(view, [id]) {
         <button data-v="all">Tutto</button><button data-v="sel">Selezione</button><button data-v="c1">1 ciclo</button><button data-v="c3">3 cicli</button>
       </div>
       <div class="seg" data-speed><button data-v="1">1×</button><button data-v="0.75">0,75×</button><button data-v="0.5">0,5×</button></div>
-      <select data-preset style="width:auto">${filters.map((p) => `<option value="${esc(p.id)}" ${p.id === (recFilter ? REC_FILTER : rec.preset) ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+      <select data-preset style="width:auto">${filters.map((p) => `<option value="${esc(p.id)}" ${p.id === REC_FILTER_ID ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
       <label class="row small" style="gap:6px">${icon('volume', 'sm')}<input type="range" min="-20" max="30" value="${settings.volumeDb}" data-vol style="width:110px"></label>
       <span class="grow"></span>
       <button class="icon-btn" data-zin title="Zoom avanti">${icon('zoomIn')}</button>
@@ -75,16 +71,17 @@ export async function mount(view, [id]) {
   </div>`;
   const q = (s) => view.querySelector(s);
 
-  let audio = null, res = null, summary = null, specImg = null, duration = rec.duration || 0;
+  let audio = null, listen = null, res = null, summary = null, specImg = null, duration = rec.duration || 0;
   let vw = [0, Math.min(duration || 10, 10)];
   let selection = null, cursor = 0;
-  let loopOn = true, loopMode = 'all', speed = 1, playPreset = recFilter ? REC_FILTER : rec.preset || 'campana', volumeDb = settings.volumeDb;
+  let loopOn = true, loopMode = 'all', speed = 1, playPreset = REC_FILTER_ID, volumeDb = settings.volumeDb;
   const player = new LoopPlayer();
   let raf = 0, dirtyBase = true;
 
   // ---------- caricamento e analisi ----------
   try {
     audio = await loadRecordingAudio(rec);
+    listen = await processSignal(audio.samples, audio.sampleRate, recFilter);
   } catch (e) {
     q('[data-loading]').innerHTML = `<div class="card"><b>Audio non disponibile</b><div class="small muted">${esc(e.message)}.</div></div>`;
     return;
@@ -95,7 +92,7 @@ export async function mount(view, [id]) {
   async function analyze(kind) {
     q('[data-loading]').classList.remove('hidden');
     try {
-      res = await analyzeSamples(audio.samples, audio.sampleRate, kind);
+      res = await analyzeSamples(audio.samples, audio.sampleRate, kind, listen === audio.samples ? null : listen);
     } catch (e) {
       q('[data-loading]').innerHTML = `<div class="card"><b>Analisi non riuscita</b><div class="small muted">${esc(e.message)}</div></div>`;
       return;
@@ -326,14 +323,32 @@ export async function mount(view, [id]) {
     return loopOn ? [0, duration] : [cursor, duration];
   }
 
+  // filtro di ascolto: cambia ciò che si sente e anche tracciato e spettrogramma
+  let filterToken = 0;
+  async function setListenFilter(id) {
+    const token = ++filterToken;
+    playPreset = id;
+    const y = await processSignal(audio.samples, audio.sampleRate, filterById(id));
+    if (token !== filterToken) return;
+    listen = y;
+    restartIfPlaying();
+    if (!res) return;
+    const v = await viewSamples(listen, audio.sampleRate, rec.kind, res.heart);
+    if (token !== filterToken || !res) return;
+    Object.assign(res, v);
+    const [lo, hi] = specLevels(res.spec.cols);
+    specImg = buildSpecImage(res.spec, settings.colormap, lo, hi);
+    dirtyBase = true;
+    renderCharts();
+  }
+
   async function play() {
     const [a, b] = loopRange();
-    const p = filterById(playPreset);
     q('[data-play]').innerHTML = `${icon('pause', 'sm')} Pausa`;
     try {
       await player.play({
-        samples: audio.samples, fs: audio.sampleRate, start: a, end: b, startAt: loopMode === 'all' && cursor > a && cursor < b - 0.2 ? cursor : null,
-        loop: loopOn, speed, bands: p.bands, volumeDb, normalize: true,
+        samples: listen, fs: audio.sampleRate, start: a, end: b, startAt: loopMode === 'all' && cursor > a && cursor < b - 0.2 ? cursor : null,
+        loop: loopOn, speed, bands: [], volumeDb, normalize: true,
         onEnd: () => { q('[data-play]').innerHTML = `${icon('play', 'sm')} Riproduci`; },
       });
     } catch (e) { toast('Riproduzione non riuscita: ' + e.message, { type: 'error' }); }
@@ -445,7 +460,7 @@ export async function mount(view, [id]) {
     b.classList.toggle('on', +b.dataset.v === speed);
     b.onclick = () => { speed = +b.dataset.v; speeds.forEach((x) => x.classList.toggle('on', x === b)); restartIfPlaying(); };
   });
-  q('[data-preset]').onchange = (e) => { playPreset = e.target.value; restartIfPlaying(); };
+  q('[data-preset]').onchange = (e) => setListenFilter(e.target.value);
   q('[data-vol]').oninput = (e) => { volumeDb = +e.target.value; player.setVolume(volumeDb); };
   q('[data-zin]').onclick = () => zoom(1 / 1.6);
   q('[data-zout]').onclick = () => zoom(1.6);
@@ -453,11 +468,15 @@ export async function mount(view, [id]) {
   q('[data-notes]').onchange = async (e) => { rec.notes = e.target.value; rec = await repo.saveRecording(rec); toast('Note salvate'); };
 
   const fileBase = () => `Fonogramma_${safeName(patient ? `${patient.lastName}_${patient.firstName}` : 'senza_paziente')}_${safeName(siteById(rec.site) ? siteById(rec.site).name : rec.site)}_${new Date(rec.createdAt).toISOString().slice(0, 16).replace(/[:T]/g, '-')}`;
-  q('[data-wav]').onclick = async () => downloadBlob(await loadRecordingBlob(rec), `${fileBase()}.wav`);
+  q('[data-wav]').onclick = async () => {
+    const [s0, s1] = selection || [0, duration];
+    const y = await player.render(listen, audio.sampleRate, Math.round(s0 * audio.sampleRate), Math.round(s1 * audio.sampleRate), [], 1, true);
+    downloadBlob(encodeWav(y, audio.sampleRate), `${fileBase()}${playPreset === REC_FILTER_ID ? '' : '_' + safeName(filterById(playPreset).name)}.wav`);
+  };
 
   q('[data-more]').onclick = () => {
     const body = el(`<div class="col">
-      <button class="btn" data-a="filtered">${icon('download', 'sm')} Esporta ${selection ? 'selezione' : 'registrazione'} filtrata (${esc(filterById(playPreset).name)})</button>
+      <button class="btn" data-a="raw">${icon('download', 'sm')} Esporta l'originale non filtrato (WAV)</button>
       <button class="btn" data-a="assign">${icon('user', 'sm')} Assegna a paziente / visita</button>
       <button class="btn" data-a="site">${icon('pin', 'sm')} Cambia focolaio / punto</button>
       <button class="btn danger" data-a="del">${icon('trash', 'sm')} Elimina registrazione</button>
@@ -467,11 +486,8 @@ export async function mount(view, [id]) {
       const a = e.target.closest('[data-a]');
       if (!a) return;
       sh.close();
-      if (a.dataset.a === 'filtered') {
-        const [s0, s1] = selection || [0, duration];
-        const y = await player.render(audio.samples, audio.sampleRate, Math.round(s0 * audio.sampleRate), Math.round(s1 * audio.sampleRate), filterById(playPreset).bands, 1, true);
-        downloadBlob(encodeWav(y, audio.sampleRate), `${fileBase()}_${safeName(filterById(playPreset).name)}.wav`);
-      } else if (a.dataset.a === 'assign') assign();
+      if (a.dataset.a === 'raw') downloadBlob(await loadRecordingBlob(rec), `${fileBase()}_originale.wav`);
+      else if (a.dataset.a === 'assign') assign();
       else if (a.dataset.a === 'site') changeSite();
       else if (a.dataset.a === 'del') {
         if (await confirmDialog('Eliminare definitivamente questa registrazione?', { danger: true, okText: 'Elimina' })) {

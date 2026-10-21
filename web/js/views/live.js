@@ -397,6 +397,7 @@ export async function mount(view, params, query) {
     const rec = {
       kind: mode, site, label: s ? s.full : 'Registrazione', visitId: visit ? visit.id : null, patientId: patient ? patient.id : null,
       duration: samples.length / fs, fs, preset: presetId, bands, gainDb: settings.gainDb, source: engine.source || settings.source,
+      denoise: settings.denoise && mode === 'heart' ? settings.denoiseStrength : 0,
       device: engine.inputLabel || '', ...extra,
     };
     const saved = await repo.saveRecording(rec, encodeWav(samples, fs));
