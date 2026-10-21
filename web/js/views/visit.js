@@ -43,18 +43,18 @@ export async function mount(view, [id], query) {
   const save = () => { pendingSave = true; saveLater(); };
 
   view.innerHTML = `<div class="page">
-    <div class="row between" style="align-items:flex-start">
+    <div class="page-head">
       <div class="grow" data-head></div>
       <div class="row">
-        <a class="btn" href="#/report/${esc(visit.id)}">${icon('printer', 'sm')} Referto</a>
+        <a class="btn primary" href="#/report/${esc(visit.id)}">${icon('printer', 'sm')} Referto</a>
         <button class="btn" data-status></button>
-        <button class="icon-btn" data-del title="Elimina visita">${icon('trash')}</button>
+        <button class="icon-btn" data-del title="Elimina visita" aria-label="Elimina visita">${icon('trash')}</button>
       </div>
     </div>
     <div class="tabs" data-tabs>
       <button data-t="anamnesi">${icon('clipboard', 'sm')} Anamnesi</button>
-      <button data-t="heart">${icon('heart', 'sm')} Cuore</button>
-      <button data-t="lung">${icon('lungs', 'sm')} Torace</button>
+      <button data-t="heart">${icon('heart', 'sm')} Cuore <span class="tab-count" data-cnt="heart"></span></button>
+      <button data-t="lung">${icon('lungs', 'sm')} Torace <span class="tab-count" data-cnt="lung"></span></button>
       <button data-t="conclusioni">${icon('flag', 'sm')} Conclusioni</button>
     </div>
     <div data-body></div>
@@ -63,9 +63,9 @@ export async function mount(view, [id], query) {
 
   function renderHead() {
     const age = ageFrom(patient && patient.dob);
-    q('[data-head]').innerHTML = `<div class="small muted"><a href="#/patient/${esc(visit.patientId)}">${icon('chevL', 'sm')} Scheda paziente</a></div>
-      <h1>${esc(patientName(patient))}</h1>
-      <div class="small muted">${age !== null ? `${age} anni · ` : ''}${esc((patient && patient.sex) || '')} · visita del ${fmtDateTime(visit.date)}</div>`;
+    q('[data-head]').innerHTML = `<div class="crumb"><a href="#/patient/${esc(visit.patientId)}">${icon('chevL', 'sm')} Scheda paziente</a></div>
+      <h1>${esc(patientName(patient))} <span class="badge ${visit.status === 'chiusa' ? 'ok' : 'accent'}">${visit.status === 'chiusa' ? 'chiusa' : 'aperta'}</span></h1>
+      <div class="meta">${[age !== null ? `${age} anni` : '', (patient && patient.sex) || '', `visita del ${fmtDateTime(visit.date)}`, visit.reason || ''].filter(Boolean).map(esc).join(' · ')}</div>`;
     q('[data-status]').innerHTML = visit.status === 'chiusa' ? `${icon('refresh', 'sm')} Riapri` : `${icon('check', 'sm')} Chiudi visita`;
   }
 
@@ -128,8 +128,14 @@ export async function mount(view, [id], query) {
         ${lines.length ? `<ul class="small" style="margin:4px 0 0;padding-left:1.1rem">${lines.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '<div class="small muted">Nessun reperto anomalo rilevato</div>'}
         <button class="btn sm" style="margin-top:6px" data-auto>${icon('wand', 'sm')} Compila i reperti dall'analisi</button></div>` : ''}
     </div>`);
-    const ed = findingsEditor(fieldsDef, value, (v) => { visit[kind][s.id] = v; save(); updateNum(); });
-    c.appendChild(ed);
+    // reperti del medico a scomparsa: il riepilogo dice cosa è stato inserito
+    const findingText = (v) => (kind === 'heart' ? heartFindingText(v) : lungFindingText(v));
+    const det = el(`<details class="disclose findings"><summary><span>Reperti del medico</span><span class="small muted" data-ftext></span></summary></details>`);
+    const setText = () => { const t = findingText(value); det.querySelector('[data-ftext]').textContent = t ? `· ${t}` : '· da compilare'; };
+    const ed = findingsEditor(fieldsDef, value, (v) => { visit[kind][s.id] = v; save(); updateNum(); setText(); });
+    det.appendChild(ed);
+    setText();
+    c.appendChild(det);
     const updateNum = () => {
       const st = siteStatus(kind)[s.id] || '';
       c.querySelector('.site-num').className = `site-num ${st}`;
@@ -140,6 +146,8 @@ export async function mount(view, [id], query) {
       Object.assign(value, auto);
       visit[kind][s.id] = value;
       ed.rerender();
+      setText();
+      det.open = true;
       save();
       updateNum();
       toast('Reperti precompilati: verifica e correggi se necessario');
@@ -282,6 +290,12 @@ export async function mount(view, [id], query) {
   async function renderTab() {
     recs = await repo.listRecordings({ visitId: visit.id });
     view.querySelectorAll('[data-tabs] button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
+    // quanti punti sono stati esaminati
+    for (const kind of ['heart', 'lung']) {
+      const sites = kind === 'heart' ? HEART_SITES.filter((s) => !s.optional) : LUNG_SITES;
+      const st = siteStatus(kind);
+      q(`[data-cnt="${kind}"]`).textContent = `${sites.filter((s) => st[s.id]).length}/${sites.length}`;
+    }
     const body = q('[data-body]');
     if (tab === 'heart') renderHeart(body);
     else if (tab === 'lung') renderLung(body);

@@ -51,6 +51,7 @@ const ASSETS = [
     'js/views/home.js',
     'js/views/inputcheck.js',
     'js/views/live.js',
+    'js/views/onboarding.js',
     'js/views/patient.js',
     'js/views/patients.js',
     'js/views/recording.js',

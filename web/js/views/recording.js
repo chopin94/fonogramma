@@ -25,24 +25,32 @@ export async function mount(view, [id]) {
   const recFilter = recordingFilter(rec);
   const filters = [recFilter, ...allPresets()];
   const filterById = (id) => filters.find((f) => f.id === id) || getPreset(id);
+  const back = rec.visitId ? `<a href="#/visit/${esc(rec.visitId)}?tab=${rec.kind === 'lung' ? 'lung' : 'heart'}">${icon('chevL', 'sm')} Visita · ${esc(patientName(patient))}</a>`
+    : `<a href="#/patients">${icon('chevL', 'sm')} Archivio</a>`;
   view.innerHTML = `<div class="page">
-    <div class="row between" style="align-items:flex-start">
+    <div class="page-head">
       <div class="grow">
-        <div class="small muted">${rec.visitId ? `<a href="#/visit/${esc(rec.visitId)}?tab=${rec.kind === 'lung' ? 'lung' : 'heart'}">${icon('chevL', 'sm')} Visita</a> · ` : ''}${esc(patientName(patient))}</div>
+        <div class="crumb">${back}</div>
         <h1>${icon(rec.kind === 'lung' ? 'lungs' : 'heart')} ${esc(rec.label || siteName(rec.site))}</h1>
-        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc(recFilter.name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz ${inputBadges(rec)}</div>
+        <div class="meta">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc(recFilter.name)}</div>
+        <div class="row" style="gap:6px;margin-top:6px">${inputBadges(rec)}</div>
       </div>
       <div class="row">
-        <button class="btn sm" data-wav title="Scarica l'audio come lo ascolti (filtro scelto; solo la selezione, se c'è)">${icon('download', 'sm')} WAV</button>
-        <button class="btn sm" data-more>${icon('list', 'sm')} Altro</button>
+        <button class="btn" data-wav title="Scarica l'audio come lo ascolti (filtro scelto; solo la selezione, se c'è)">${icon('download', 'sm')} WAV</button>
+        <button class="icon-btn" data-more title="Altre azioni" aria-label="Altre azioni">${icon('more')}</button>
       </div>
     </div>
-    <div class="rec-plots" style="position:relative;margin-top:10px" data-plots>
+    <div class="rec-plots" style="position:relative" data-plots>
       <canvas class="rec-wave" data-wave></canvas>
       <canvas class="rec-spec" data-spec></canvas>
       <canvas data-over style="position:absolute;left:0;top:0;width:100%;pointer-events:none"></canvas>
       <canvas class="rec-mini" data-mini></canvas>
-      <div class="overlay-msg" data-loading><div><div class="badge accent">Analisi in corso…</div></div></div>
+      <div class="plot-tools">
+        <button class="icon-btn" data-zin title="Zoom avanti">${icon('zoomIn', 'sm')}</button>
+        <button class="icon-btn" data-zout title="Zoom indietro">${icon('zoomOut', 'sm')}</button>
+        <button class="icon-btn" data-zfit title="Mostra tutta la registrazione">${icon('fit', 'sm')}</button>
+      </div>
+      <div class="overlay-msg" data-loading><div class="badge accent">Analisi in corso…</div></div>
     </div>
     <div class="transport">
       <button class="btn primary" data-play>${icon('play', 'sm')} Riproduci</button>
@@ -50,22 +58,18 @@ export async function mount(view, [id]) {
       <div class="seg" data-lmode>
         <button data-v="all">Tutto</button><button data-v="sel">Selezione</button><button data-v="c1">1 ciclo</button><button data-v="c3">3 cicli</button>
       </div>
-      <div class="seg" data-speed><button data-v="1">1×</button><button data-v="0.75">0,75×</button><button data-v="0.5">0,5×</button></div>
-      <select data-preset style="width:auto">${filters.map((p) => `<option value="${esc(p.id)}" ${p.id === REC_FILTER_ID ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
-      <label class="row small" style="gap:6px">${icon('volume', 'sm')}<input type="range" min="-20" max="30" value="${settings.volumeDb}" data-vol style="width:110px"></label>
-      <span class="grow"></span>
-      <button class="icon-btn" data-zin title="Zoom avanti">${icon('zoomIn')}</button>
-      <button class="icon-btn" data-zout title="Zoom indietro">${icon('zoomOut')}</button>
-      <button class="icon-btn" data-zfit title="Tutto">${icon('fit')}</button>
+      <div class="seg" data-speed title="Velocità (l'intonazione non cambia)"><button data-v="1">1×</button><button data-v="0.75">0,75×</button><button data-v="0.5">0,5×</button></div>
+      <label class="transport-field"><span class="tiny muted">Filtro</span><select data-preset>${filters.map((p) => `<option value="${esc(p.id)}" ${p.id === REC_FILTER_ID ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+      <label class="transport-field" title="Volume">${icon('volume', 'sm')}<input type="range" min="-20" max="30" value="${settings.volumeDb}" data-vol></label>
     </div>
-    <div class="tiny muted">Trascina sul grafico per selezionare un tratto da ripetere · tocca per posizionare il cursore · zoom con due dita o Ctrl+rotella · la barra in basso sposta la vista<span data-arthint></span>.</div>
-    <div class="grid two" style="margin-top:12px">
-      <div class="card col" data-summary><b>Analisi automatica</b><div class="muted small">…</div></div>
+    <div class="tiny muted">Trascina sul grafico per selezionare un tratto da ripetere · tocca per posizionare il cursore · zoom con due dita o Ctrl+rotella<span data-arthint></span>.</div>
+    <div class="grid two" style="margin-top:14px">
+      <div class="card col" data-summary><b>Sintesi dell’analisi</b><div class="muted small">…</div></div>
       <div class="card col" data-charts></div>
     </div>
     <div class="card" style="margin-top:12px" data-table></div>
     <div class="card col" style="margin-top:12px">
-      <b>${icon('edit', 'sm')} Note</b>
+      <h3>${icon('edit', 'sm')} Note</h3>
       <textarea data-notes placeholder="Annotazioni su questa registrazione…">${esc(rec.notes || '')}</textarea>
     </div>
   </div>`;
@@ -76,7 +80,7 @@ export async function mount(view, [id]) {
   let selection = null, cursor = 0;
   let loopOn = true, loopMode = 'all', speed = 1, playPreset = REC_FILTER_ID, volumeDb = settings.volumeDb;
   const player = new LoopPlayer();
-  let raf = 0, dirtyBase = true;
+  let raf = 0, dirtyBase = true, tableOpen = false;
 
   // ---------- caricamento e analisi ----------
   try {
@@ -210,11 +214,22 @@ export async function mount(view, [id]) {
     const l = res.lung && res.lung.metrics;
     const lines = rec.kind === 'lung' ? lungSummaryLines(summary.lung).concat(heartSummaryLines(summary.heart).slice(0, 1)) : heartSummaryLines(summary.heart);
     const kv = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+    const key = (cls, k, v, d) => `<div class="key ${cls}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d || '&nbsp;'}</div></div>`;
     const notes = qualityNotes(summary.quality, rec.kind);
-    box.innerHTML = `<div class="row between"><b>Analisi automatica</b>${isDisturbed(summary.quality) ? '<span class="badge bad">Registrazione disturbata</span>' : qualityBadge(rec.kind === 'lung' ? l && l.sqi : h && h.sqi)}</div>
+    const keys = rec.kind === 'lung' && l ? [
+      key('', 'Freq. respiratoria', l.rr ? `${n0(l.rr)}<small>atti/min</small>` : '—', `${l.breathCount} respiri`),
+      key(l.cracklesSignificant ? 'alert' : '', 'Crepitii', l.cracklesPerBreath !== null ? `${fmtNum(l.cracklesPerBreath, 1)}<small>/resp.</small>` : `${l.crackles}`, `fini ${l.cracklesFine} · grossolani ${l.cracklesCoarse}`),
+      key(l.wheezes || l.rhonchi ? 'alert' : '', 'Sibili · ronchi', `${l.wheezes} · ${l.rhonchi}`, l.polyphonic ? 'polifonici' : ''),
+    ] : h ? [
+      key('', 'Freq. cardiaca', h.bpm ? `${n0(h.bpm)}<small>bpm</small>` : '—', `${h.nBeats} battiti`),
+      key(h.rhythm === 'Irregolare' ? 'alert' : '', 'Ritmo', esc(h.rhythm || '—'), h.rrCv !== null && h.rrCv !== undefined ? `variabilità ${n0(h.rrCv * 100)}%` : ''),
+      key(h.murmurSys || h.murmurDia ? 'alert' : '', 'Soffio', h.murmurSys && h.murmurDia ? 'Sisto-diast.' : h.murmurSys ? 'Sistolico' : h.murmurDia ? 'Diastolico' : 'No', esc(h.murmurSysShape || h.murmurDiaShape || '')),
+    ] : [];
+    box.innerHTML = `<div class="row between"><h3 style="margin:0">Sintesi dell’analisi</h3>${isDisturbed(summary.quality) ? '<span class="badge bad">Registrazione disturbata</span>' : qualityBadge(rec.kind === 'lung' ? l && l.sqi : h && h.sqi)}</div>
       ${notes.length ? `<div class="advice warn"><b>${esc(notes[0])}</b>${notes.slice(1).map((x) => `<div class="small">${esc(x)}</div>`).join('')}</div>` : ''}
-      <div class="seg" data-kind><button data-v="heart">${icon('heart', 'sm')} Cuore</button><button data-v="lung">${icon('lungs', 'sm')} Torace</button></div>
+      ${keys.length ? `<div class="keys boxed">${keys.join('')}</div>` : ''}
       ${lines.length ? `<ul class="small" style="margin:0;padding-left:1.1rem">${lines.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : `<div class="small muted">${esc((res.heart && res.heart.reason) || 'Nessun reperto significativo rilevato')}</div>`}
+      <details class="disclose"><summary>Tutte le misure</summary>
       ${rec.kind !== 'lung' && h ? `<dl class="kv">
         ${kv('Battiti analizzati', h.nBeats)}${kv('FC media / da autocorrelazione', `${n0(h.bpm)} / ${n0(h.bpmAuto)} bpm`)}
         ${kv('HRV: SDNN · RMSSD · pNN50', `${n0(h.sdnn)} ms · ${n0(h.rmssd)} ms · ${n0(h.pnn50)}%`)}
@@ -230,29 +245,27 @@ export async function mount(view, [id]) {
         ${kv('Crepitii', `${l.crackles} (fini ${l.cracklesFine}, grossolani ${l.cracklesCoarse}) · ${fmtNum(l.cracklesPerMin, 0)}/min`)}
         ${kv('Sibili · ronchi', `${l.wheezes} · ${l.rhonchi}`)}${kv('Intensità murmure', `${fmtNum(l.intensityDb, 1)} dB (dinamica ${fmtNum(l.dynamicDb, 1)} dB)`)}
       </dl>` : ''}
+      </details>
       <div class="tiny muted">Analisi automatica indicativa: non sostituisce il giudizio clinico.</div>`;
-    box.querySelectorAll('[data-kind] button').forEach((b) => {
-      b.classList.toggle('on', b.dataset.v === (rec.kind === 'lung' ? 'lung' : 'heart'));
-      b.onclick = async () => {
-        if (b.dataset.v === rec.kind) return;
-        rec.kind = b.dataset.v;
-        rec = await repo.saveRecording(rec);
-        analyze(rec.kind);
-      };
-    });
+  }
+
+  async function switchKind() {
+    rec.kind = rec.kind === 'lung' ? 'heart' : 'lung';
+    rec = await repo.saveRecording(rec);
+    analyze(rec.kind);
   }
 
   function renderCharts() {
     const box = q('[data-charts]');
     if (rec.kind === 'lung') {
-      box.innerHTML = `<b>Ciclo respiratorio ed eventi</b><canvas class="ens-canvas" style="height:150px" data-resp></canvas>
+      box.innerHTML = `<h3 style="margin:0">Ciclo respiratorio ed eventi</h3><canvas class="ens-canvas" style="height:150px" data-resp></canvas>
         <div class="tiny muted">● respiri · tacche gialle crepitii fini, rosse grossolani · barre bianche sibili, arancio ronchi</div>`;
       requestAnimationFrame(() => drawResp(box.querySelector('[data-resp]'), res.lung, { duration }));
       return;
     }
     const h = res.heart;
-    box.innerHTML = `<b>Ciclo cardiaco medio</b><canvas class="ens-canvas" style="height:130px" data-ens></canvas>
-      <b>Spettrogramma medio del ciclo</b><canvas class="ens-canvas" style="height:150px" data-cyc></canvas>
+    box.innerHTML = `<h3 style="margin:0">Ciclo cardiaco medio</h3><canvas class="ens-canvas" style="height:130px" data-ens></canvas>
+      <b class="small">Spettrogramma medio del ciclo</b><canvas class="ens-canvas" style="height:150px" data-cyc></canvas>
       <div class="grid two" style="gap:8px">
         <div><div class="tiny muted">Profilo sistolico ${h.metrics.murmurSysShape ? '· ' + esc(h.metrics.murmurSysShape) : ''}</div><canvas class="ens-canvas" style="height:70px" data-ps></canvas></div>
         <div><div class="tiny muted">Profilo diastolico ${h.metrics.murmurDiaShape ? '· ' + esc(h.metrics.murmurDiaShape) : ''}</div><canvas class="ens-canvas" style="height:70px" data-pd></canvas></div>
@@ -272,18 +285,20 @@ export async function mount(view, [id]) {
         ...res.lung.crackles.map((c) => ({ t: c.t, t1: c.t, txt: `Crepitio ${c.type}`, det: `2CD ${fmtNum(c.cd2, 1)} ms · IDW ${fmtNum(c.idw, 1)} ms`, ph: c.phase === 'insp' ? 'inspiratorio' : c.phase === 'esp' ? 'espiratorio' : '' })),
         ...res.lung.wheezes.map((w) => ({ t: w.t0, t1: w.t1, txt: w.type === 'ronco' ? 'Ronco' : 'Sibilo', det: `${n0(w.f)} Hz · ${fmtNum(w.dur, 2)} s`, ph: '' })),
       ].sort((a, b) => a.t - b.t);
-      box.innerHTML = `<div class="row between"><b>Eventi (${ev.length})</b></div>` + (ev.length ? `<div class="table-wrap" style="margin-top:8px"><table class="data"><thead><tr><th>Evento</th><th>Tempo</th><th>Dettagli</th><th>Fase</th></tr></thead><tbody>
-        ${ev.map((e, i) => `<tr data-i="${i}"><td>${e.txt}</td><td>${fmtNum(e.t, 2)} s</td><td>${e.det}</td><td>${e.ph}</td></tr>`).join('')}</tbody></table></div>` : `<div class="small muted">Nessun crepitio, sibilo o ronco rilevato.</div>`);
+      box.innerHTML = `<details class="disclose" data-tbl ${tableOpen ? 'open' : ''}><summary>Eventi (${ev.length})</summary>` + (ev.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Evento</th><th>Tempo</th><th>Dettagli</th><th>Fase</th></tr></thead><tbody>
+        ${ev.map((e, i) => `<tr data-i="${i}"><td>${e.txt}</td><td>${fmtNum(e.t, 2)} s</td><td>${e.det}</td><td>${e.ph}</td></tr>`).join('')}</tbody></table></div>` : `<div class="small muted">Nessun crepitio, sibilo o ronco rilevato.</div>`) + '</details>';
+      box.querySelector('[data-tbl]').ontoggle = (e) => { tableOpen = e.target.open; };
       box.querySelectorAll('tbody tr').forEach((tr) => {
         tr.onclick = () => { const e = ev[+tr.dataset.i]; focusRange(e.t - 0.4, Math.max(e.t1, e.t) + 0.4); mark(tr); };
       });
       return;
     }
     const beats = res.heart.beats;
-    box.innerHTML = `<div class="row between"><b>Battiti (${beats.length})</b><button class="btn sm" data-csv>${icon('download', 'sm')} CSV</button></div>` + (beats.length ? `<div class="table-wrap" style="margin-top:8px"><table class="data">
+    box.innerHTML = `<details class="disclose" data-tbl ${tableOpen ? 'open' : ''}><summary>Battiti (${beats.length})</summary><div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn sm" data-csv>${icon('download', 'sm')} Esporta CSV</button></div>` + (beats.length ? `<div class="table-wrap"><table class="data">
       <thead><tr><th>#</th><th>Tempo</th><th>FC</th><th>Sistole</th><th>Diastole</th><th>S1/S2</th><th>Sdopp.</th><th>Ind. sist.</th><th>Toni aggiunti</th></tr></thead><tbody>
       ${beats.map((b, i) => `<tr data-i="${i}"><td>${i + 1}</td><td>${fmtNum(b.t, 2)} s</td><td>${n0(b.bpm)}</td><td>${n0(b.sys * 1000)}</td><td>${b.dia ? n0(b.dia * 1000) : '—'}</td><td>${fmtNum(b.ratio, 2)}</td><td>${b.split ? n0(b.split) + ' ms' : '—'}</td><td>${fmtNum(b.sysIdx, 2)}</td><td>${esc((b.extras || []).join(', '))}</td></tr>`).join('')}
-      </tbody></table></div>` : `<div class="small muted">${esc(res.heart.reason || 'Nessun battito riconosciuto')}</div>`);
+      </tbody></table></div>` : `<div class="small muted">${esc(res.heart.reason || 'Nessun battito riconosciuto')}</div>`) + '</details>';
+    box.querySelector('[data-tbl]').ontoggle = (e) => { tableOpen = e.target.open; };
     box.querySelectorAll('tbody tr').forEach((tr) => {
       tr.onclick = () => {
         const b = beats[+tr.dataset.i];
@@ -483,11 +498,13 @@ export async function mount(view, [id]) {
   };
 
   q('[data-more]').onclick = () => {
-    const body = el(`<div class="col">
-      <button class="btn" data-a="raw">${icon('download', 'sm')} Esporta l'originale non filtrato (WAV)</button>
-      <button class="btn" data-a="assign">${icon('user', 'sm')} Assegna a paziente / visita</button>
-      <button class="btn" data-a="site">${icon('pin', 'sm')} Cambia focolaio / punto</button>
-      <button class="btn danger" data-a="del">${icon('trash', 'sm')} Elimina registrazione</button>
+    const item = (a, ic, title, sub, cls = '') => `<button class="menu-item ${cls}" data-a="${a}">${icon(ic)}<span class="grow"><b>${title}</b>${sub ? `<span class="small muted">${sub}</span>` : ''}</span></button>`;
+    const body = el(`<div class="menu-list">
+      ${item('raw', 'download', 'Esporta l’originale non filtrato', 'WAV come uscito dal fonendo, per altri programmi')}
+      ${item('assign', 'user', 'Assegna a paziente o visita')}
+      ${item('site', 'pin', 'Cambia focolaio o punto')}
+      ${item('kind', rec.kind === 'lung' ? 'heart' : 'lungs', rec.kind === 'lung' ? 'Analizza come suono cardiaco' : 'Analizza come suono toracico', 'Se la registrazione è stata salvata nel tipo sbagliato')}
+      ${item('del', 'trash', 'Elimina registrazione', '', 'danger')}
     </div>`);
     const sh = sheet({ title: 'Azioni', body });
     body.onclick = async (e) => {
@@ -495,6 +512,7 @@ export async function mount(view, [id]) {
       if (!a) return;
       sh.close();
       if (a.dataset.a === 'raw') downloadBlob(await loadRecordingBlob(rec), `${fileBase()}_originale.wav`);
+      else if (a.dataset.a === 'kind') switchKind();
       else if (a.dataset.a === 'assign') assign();
       else if (a.dataset.a === 'site') changeSite();
       else if (a.dataset.a === 'del') {

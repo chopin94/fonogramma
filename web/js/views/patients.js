@@ -6,8 +6,9 @@ import { openPatientEditor, recordingRow, avatarHtml, patientMatches } from './c
 
 export async function mount(view) {
   view.innerHTML = `<div class="page">
-    <div class="row between"><h1>Archivio pazienti</h1><button class="btn primary" data-new>${icon('plus', 'sm')} Nuovo paziente</button></div>
-    <input type="search" placeholder="Cerca per cognome, nome o codice…" data-q style="margin:8px 0 12px">
+    <div class="page-head"><div class="grow"><h1>Archivio pazienti</h1><div class="meta">Pazienti, visite e registrazioni salvati su questo dispositivo</div></div>
+      <button class="btn primary" data-new>${icon('plus', 'sm')} Nuovo paziente</button></div>
+    <input type="search" placeholder="Cerca per cognome, nome o codice…" data-q style="margin:0 0 12px">
     <div class="card flat"><div class="list" data-list></div></div>
     <div data-free></div>
   </div>`;

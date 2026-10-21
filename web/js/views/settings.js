@@ -13,16 +13,18 @@ import { APP_VERSION, SOURCE_URL } from '../version.js';
 import { PROFILES } from '../profiles.js';
 
 export async function mount(view) {
+  const SECTIONS = [['profilo', 'Profilo'], ['ingresso', 'Ingresso audio'], ['registrazione', 'Registrazione'], ['aspetto', 'Aspetto'], ['preset', 'Preset'], ['archivio', 'Archivio e backup'], ['info', 'Informazioni']];
   view.innerHTML = `<div class="page">
-    <h1>Impostazioni</h1>
-    <div class="card col" style="margin-bottom:12px">
+    <div class="page-head"><div class="grow"><h1>Impostazioni</h1><div class="meta">Valgono per questo dispositivo</div></div></div>
+    <nav class="chips scroll toc" data-toc>${SECTIONS.map(([id, name]) => `<button class="chip" data-go="${id}">${name}</button>`).join('')}</nav>
+    <div class="card col" style="margin-bottom:12px" id="set-profilo">
       <h3>${icon('user')} Chi usa l’app</h3>
       <div class="seg" data-prof>${PROFILES.map((p) => `<button data-v="${p.id}">${p.name}</button>`).join('')}</div>
       <div class="small muted" data-profdesc></div>
     </div>
     <div class="grid two">
-      <div class="card col" data-input></div>
-      <div class="card col">
+      <div class="card col" data-input id="set-ingresso"></div>
+      <div class="card col" id="set-registrazione">
         <h3>${icon('rec')} Registrazione</h3>
         <label class="field"><span>Memoria "ultimi secondi" (buffer ad anello): <b data-lv>${settings.loopSeconds} s</b></span><input type="range" min="10" max="120" step="5" value="${settings.loopSeconds}" data-loop></label>
         <label class="field"><span>Pulsante "Ultimi…": salva gli ultimi <b data-gv>${settings.grabSeconds} s</b></span><input type="range" min="5" max="60" step="5" value="${settings.grabSeconds}" data-grab></label>
@@ -34,14 +36,14 @@ export async function mount(view) {
         </div>
         <label class="check"><input type="checkbox" data-gwc ${settings.guidedWaitClean ? 'checked' : ''}> Esame guidato: aspetta un segnale senza disturbi prima di registrare</label>
       </div>
-      <div class="card col">
-        <h3>${icon('layers')} Visualizzazione</h3>
+      <div class="card col" id="set-aspetto">
+        <h3>${icon('layers')} Aspetto</h3>
         <div class="field"><span>Tema</span><div class="seg" data-theme><button data-v="auto">Automatico</button><button data-v="dark">Scuro</button><button data-v="light">Chiaro</button></div></div>
         <div class="field"><span>Mappa colori del waterfall</span><div class="col" data-cmaps style="gap:6px"></div></div>
       </div>
-      <div class="card col" data-presets></div>
-      <div class="card col" data-storage></div>
-      <div class="card col">
+      <div class="card col" data-presets id="set-preset"></div>
+      <div class="card col" data-storage id="set-archivio"></div>
+      <div class="card col" id="set-info">
         <h3>${icon('info')} Informazioni</h3>
         <p class="small">Fonogramma ${APP_VERSION} · PWA open source per fonendoscopio con uscita jack: filtri ed equalizzatore, waterfall, riconoscimento S1–S4, metriche, archivio pazienti, referto. Nasce dall'unione dei programmi <i>fonocardiogrammaPCG</i>, <i>cardiogramma v1–v3</i>, <i>Cardiogram94</i> e <i>PCGdroid</i>.</p>
         <p class="small">Codice sorgente: <a href="${SOURCE_URL}" target="_blank" rel="noopener">${SOURCE_URL.replace('https://', '')}</a></p>
@@ -88,6 +90,12 @@ export async function mount(view) {
     };
   }
   renderInput();
+
+  // --- indice delle sezioni ---
+  q('[data-toc]').onclick = (e) => {
+    const b = e.target.closest('[data-go]');
+    if (b) view.querySelector(`#set-${b.dataset.go}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // --- profilo ---
   const rprof = () => {

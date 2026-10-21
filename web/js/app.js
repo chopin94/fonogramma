@@ -1,7 +1,7 @@
 // Avvio dell'app: router, service worker (offline/installazione), avviso iniziale.
-import { applyTheme, settings, updateSettings } from './settings.js';
-import { toast, sheet, el } from './util.js';
-import { PROFILES } from './profiles.js';
+import { applyTheme } from './settings.js';
+import { toast } from './util.js';
+import { openOnboarding } from './views/onboarding.js';
 
 const routes = [
   [/^\/?$/, 'home', () => import('./views/home.js')],
@@ -85,30 +85,15 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 // ---------- avviso al primo avvio ----------
-function firstRunNotice() {
+// primo avvio: tre passi (avvertenze e profilo, ingresso, da dove iniziare)
+function firstRun() {
   const KEY = 'fonogramma.notice.v1';
   try { if (localStorage.getItem(KEY)) return; } catch { return; }
-  const body = el(`<div class="col">
-      <p class="lead">Fonogramma è uno strumento <b>didattico e di supporto</b> all'auscultazione.</p>
-      <ul class="small">
-        <li>Le analisi automatiche (toni, soffi, crepitii, frequenze) sono <b>indicative</b> e non costituiscono diagnosi.</li>
-        <li><b>Non è un dispositivo medico</b> certificato: le decisioni cliniche restano del professionista.</li>
-        <li>I dati restano <b>solo su questo dispositivo</b>: fai ogni tanto un backup da Impostazioni.</li>
-      </ul>
-      <b>Chi usa l'app?</b>
-      <div class="col" style="gap:6px" data-prof>${PROFILES.map((p) => `<label class="check"><input type="radio" name="prof" value="${p.id}" ${p.id === settings.profile ? 'checked' : ''}> <span><b>${p.name}</b> · <span class="small muted">${p.desc}</span></span></label>`).join('')}</div>
-      <div class="tiny muted">Si cambia quando vuoi in Impostazioni.</div>
-    </div>`);
-  body.querySelector('[data-prof]').onchange = (e) => updateSettings({ profile: e.target.value });
-  sheet({
-    title: 'Prima di iniziare',
-    body,
-    actions: [{
-      label: 'Ho capito', kind: 'primary', run: () => {
-        try { localStorage.setItem(KEY, '1'); } catch {}
-        if (settings.profile === 'paziente' && /^#?\/?$/.test(location.hash)) route();
-      },
-    }],
+  openOnboarding({
+    onDone: () => {
+      try { localStorage.setItem(KEY, '1'); } catch {}
+      if (/^#?\/?$/.test(location.hash)) route(); // la Home cambia con il profilo scelto
+    },
   });
 }
 
@@ -116,4 +101,4 @@ applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 registerSW();
 route();
-firstRunNotice();
+firstRun();

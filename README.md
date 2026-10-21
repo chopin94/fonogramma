@@ -39,7 +39,7 @@ Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i po
 4. La prima volta fai la **verifica dell'ingresso** (30 secondi): l'app controlla che il suono arrivi davvero dal fonendo e ti dice cosa correggere.
 
 > 💡 **Non hai ancora il fonendoscopio collegato?** Provala subito con il **simulatore**:
-> *Ausculta → **Sorgente** (o l’icona Regolazioni, i cursori in basso a destra) → Simulatore* e scegli un caso (soffi, galoppi,
+> *Ausculta → **Regolazioni** (sul telefono nel menu **⋯** in alto a destra) → Sorgente → Simulatore* e scegli un caso (soffi, galoppi,
 > crepitii, sibili…).
 
 ---
@@ -161,10 +161,16 @@ stessa riduzione del rumore). Puoi metterla in **loop** (tutta, una selezione o 
 **rallentarla**, cambiare filtro, fare zoom e leggere la tabella dei battiti e degli eventi. I tratti disturbati
 sono in rosso. **WAV** scarica l'audio come lo ascolti; l'originale non filtrato è in *Altro*.
 
-### 4 · Regolazioni utili
-L’icona **Regolazioni** (i cursori in basso a destra) nella schermata di auscultazione apre sorgente (fonendoscopio, simulatore o file
-WAV/MP3), guadagno, canale sinistro/destro, filtri, equalizzatore e dettaglio del waterfall. Nel simulatore ci
-sono anche i **disturbi** (voce, sfregamento, ronzio, urti, stanza rumorosa) per vedere come reagisce il semaforo.
+### 4 · Comandi della schermata di ascolto
+- In basso, in una sola riga: **Avvia/Ferma**, **Registra**, **Ultimi 15 s** e il **Filtro**: toccandolo scegli il
+  filtro, la riduzione del rumore della stanza e l'equalizzatore.
+- I tre valori principali (per esempio FC, ritmo e soffio) sono sempre visibili; *Tutte le misure* apre il resto
+  (sul telefono basta toccare i valori).
+- **Regolazioni** (sul telefono nel menu **⋯** in alto a destra) apre sorgente (fonendoscopio, simulatore o file
+  WAV/MP3), guadagno e volume cuffie; i dettagli del waterfall sono in *Visualizzazione avanzata*.
+- Nel menu **⋯** trovi anche ascolto in cuffia, congela, salva immagine, guida al punto e verifica dell'ingresso.
+- Nel simulatore ci sono anche i **disturbi** (voce, sfregamento, ronzio, urti, stanza rumorosa) per vedere come
+  reagisce il semaforo.
 
 ### 5 · Registrazione a casa per il medico
 In *Impostazioni → Chi usa l'app* scegli **Paziente**: in Home compare **Registrazione per il medico**. Scrivi il
@@ -219,7 +225,7 @@ filo, oppure guarda il tracciato e riascolta dopo.
 <details>
 <summary><b>Sento un fischio</b></summary>
 
-È il ritorno dall'altoparlante al microfono: usa le **cuffie** oppure disattiva l'ascolto (icona 🎧).
+È il ritorno dall'altoparlante al microfono: usa le **cuffie** oppure disattiva l'ascolto (**Cuffie** in basso, o nel menu **⋯** sul telefono).
 </details>
 
 <details>

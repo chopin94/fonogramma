@@ -16,14 +16,14 @@ export async function mount(view, [id]) {
     const age = ageFrom(patient.dob);
     const trend = recs.filter((r) => r.analysis && r.analysis.heart && r.analysis.heart.bpm && r.kind !== 'lung').slice(0, 12).reverse();
     view.innerHTML = `<div class="page">
-      <div class="small muted"><a href="#/patients">${icon('chevL', 'sm')} Archivio</a></div>
-      <div class="row between" style="align-items:flex-start">
-        <div><h1>${esc(patientName(patient))}</h1>
-          <div class="small muted">${age !== null ? `${age} anni · nato/a il ${fmtDate(patient.dob)} · ` : ''}${esc(patient.sex || '')}${patient.code ? ` · ${esc(patient.code)}` : ''}</div></div>
+      <div class="page-head">
+        <div class="grow"><div class="crumb"><a href="#/patients">${icon('chevL', 'sm')} Archivio</a></div>
+          <h1>${esc(patientName(patient))}</h1>
+          <div class="meta">${esc([age !== null ? `${age} anni · nato/a il ${fmtDate(patient.dob)}` : '', patient.sex || '', patient.code || ''].filter(Boolean).join(' · '))}</div></div>
         <div class="row">
           <button class="btn primary" data-visit>${icon('plus', 'sm')} Nuova visita</button>
           <button class="btn" data-edit>${icon('edit', 'sm')} Modifica</button>
-          <button class="icon-btn" data-del title="Elimina paziente">${icon('trash')}</button>
+          <button class="icon-btn" data-del title="Elimina paziente" aria-label="Elimina paziente">${icon('trash')}</button>
         </div>
       </div>
       ${patient.notes ? `<div class="card flat" style="margin-top:10px"><b class="small">Anamnesi</b><div class="small">${esc(patient.notes)}</div></div>` : ''}
