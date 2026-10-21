@@ -16,6 +16,12 @@ export const DEMO_SCENARIOS = [
   { id: 'crepitii-grossolani', mode: 'lung', name: 'Crepitii grossolani' },
   { id: 'sibili', mode: 'lung', name: 'Sibili espiratori' },
   { id: 'ronchi', mode: 'lung', name: 'Ronchi' },
+  // disturbi tipici dell'auscultazione, per provare l'assistente e i rilevatori
+  { id: 'voce', mode: 'heart', name: 'Disturbo: voce durante l’ascolto', disturbance: true },
+  { id: 'sfregamento', mode: 'lung', name: 'Disturbo: sfregamento della membrana', disturbance: true },
+  { id: 'ronzio', mode: 'heart', name: 'Disturbo: ronzio a 50 Hz (caricatore)', disturbance: true },
+  { id: 'urti', mode: 'heart', name: 'Disturbo: urti e movimenti del fonendo', disturbance: true },
+  { id: 'stanza-rumorosa', mode: 'heart', name: 'Disturbo: stanza rumorosa, appoggio scarso', disturbance: true },
 ];
 
 function rng(seed) {
@@ -157,6 +163,81 @@ function lungTrack(out, fs, opts, rand) {
   }
 }
 
+// Voce: frasi di sillabe armoniche (f0 110–170 Hz con intonazione) con formanti vocaliche
+// e qualche fricativa, separate da pause.
+const VOWELS = [[700, 1200, 2500], [400, 2000, 2600], [300, 800, 2300], [500, 1500, 2500]];
+function voiceTrack(out, fs, rand, amp) {
+  const n = out.length, dur = n / fs;
+  const fric = filtered(n, fs, 3000, Math.min(7000, 0.45 * fs), rand, 4, 4);
+  let t = 0.6;
+  while (t < dur) {
+    const phraseEnd = Math.min(dur, t + 1.5 + rand() * 1.5);
+    const f0b = 110 + rand() * 60;
+    while (t < phraseEnd) {
+      const sd = 0.12 + rand() * 0.18;
+      const F = VOWELS[Math.floor(rand() * VOWELS.length)];
+      const i0 = Math.round(t * fs), i1 = Math.min(n, Math.round((t + sd) * fs));
+      let ph = rand() * 6.28;
+      for (let i = i0; i < i1; i++) {
+        const u = (i - i0) / (i1 - i0);
+        const f0 = f0b * (1 + 0.12 * Math.sin(Math.PI * u) - 0.05 * u);
+        ph += (2 * Math.PI * f0) / fs;
+        let v = 0;
+        for (let k = 1; k * f0 < 3500; k++) {
+          const fk = k * f0;
+          const a = 0.6 / k + Math.exp(-0.5 * ((fk - F[0]) / 90) ** 2) + 0.6 * Math.exp(-0.5 * ((fk - F[1]) / 120) ** 2) + 0.3 * Math.exp(-0.5 * ((fk - F[2]) / 160) ** 2);
+          v += a * Math.sin(k * ph);
+        }
+        const env = Math.min(1, u * 8, (1 - u) * 8);
+        out[i] += amp * 0.25 * v * env;
+      }
+      if (rand() < 0.3) { // fricativa ("s") all'inizio della sillaba
+        const j0 = Math.max(0, i0 - Math.round(0.06 * fs));
+        for (let i = j0; i < i0; i++) out[i] += amp * 0.3 * fric[i] * Math.sin((Math.PI * (i - j0)) / (i0 - j0));
+      }
+      t += sd + 0.05 + rand() * 0.1;
+    }
+    t = phraseEnd + 1 + rand();
+  }
+}
+
+// Sfregamento della membrana su pelle, peli o vestiti: episodi di fruscio a banda larga
+// con tanti piccoli impulsi.
+function frictionTrack(out, fs, rand, amp) {
+  const n = out.length, dur = n / fs;
+  const nb = filtered(n, fs, 400, Math.min(8000, 0.45 * fs), rand, 2, 2);
+  const env = new Float32Array(n);
+  let t = 1;
+  while (t < dur) {
+    const t1 = Math.min(dur, t + 1.5 + rand() * 1.5);
+    const i0 = Math.round(t * fs), i1 = Math.round(t1 * fs);
+    for (let i = i0; i < i1; i++) env[i] += 0.25 * (0.5 + 0.5 * Math.sin((2 * Math.PI * 1.3 * i) / fs));
+    for (let te = t; te < t1; te += -Math.log(1 - rand()) / 25) {
+      const s = Math.round(te * fs), a = 0.6 + rand();
+      for (let i = 0; i < 0.012 * fs && s + i < n; i++) env[s + i] += a * Math.exp(-i / (0.002 * fs));
+    }
+    t = t1 + 1 + rand();
+  }
+  for (let i = 0; i < n; i++) out[i] += amp * nb[i] * env[i];
+}
+
+// Ronzio di rete (caricatore, cavo vicino a un alimentatore): 50 Hz e armoniche dispari.
+function humTrack(out, fs, amp) {
+  for (let i = 0; i < out.length; i++) {
+    const w = (2 * Math.PI * 50 * i) / fs;
+    out[i] += amp * (Math.sin(w) + 0.5 * Math.sin(3 * w) + 0.3 * Math.sin(5 * w));
+  }
+}
+
+// Urti: il fonendo che si sposta o batte, onde lente e ampie ogni pochi secondi.
+function bumpTrack(out, fs, rand, amp) {
+  const n = out.length, dur = n / fs;
+  for (let t = 1.5; t < dur - 0.3; t += 2.5 + rand() * 1.5) {
+    const len = 0.08 + rand() * 0.07, s = Math.round(t * fs), a = amp * (0.8 + 0.4 * rand()) * (rand() < 0.5 ? -1 : 1);
+    for (let i = 0; i < len * fs && s + i < n; i++) out[s + i] += a * Math.sin((Math.PI * i) / (len * fs));
+  }
+}
+
 export function generateDemo(id, fs, seconds = 30) {
   const n = Math.round(seconds * fs);
   const out = new Float32Array(n);
@@ -178,8 +259,14 @@ export function generateDemo(id, fs, seconds = 30) {
     if (id === 's4') { o.s4 = true; o.hr = 64; }
     if (id === 'sdoppiamento') o.wideSplit = true;
     if (id === 'fa') { o.irregular = true; o.hr = 92; }
+    if (id === 'stanza-rumorosa') o.amp = 0.3;
     heartTrack(out, fs, o, rand);
   }
+  if (id === 'voce') voiceTrack(out, fs, rand, 0.5);
+  if (id === 'sfregamento') frictionTrack(out, fs, rand, 0.2);
+  if (id === 'ronzio') humTrack(out, fs, 0.12);
+  if (id === 'urti') bumpTrack(out, fs, rand, 5);
+  if (id === 'stanza-rumorosa') { const amb = filtered(out.length, fs, 80, 2500, rand, 2, 2); for (let i = 0; i < out.length; i++) out[i] += 0.12 * amb[i]; }
   let peak = 0;
   for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(out[i]));
   const g = peak > 0 ? 0.25 / peak : 1;

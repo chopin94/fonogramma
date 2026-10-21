@@ -68,7 +68,7 @@ export function inputRecord(info, kind) {
 
 const PROCESS_NAMES = { echoCancellation: 'cancellazione dell\'eco', noiseSuppression: 'riduzione del rumore', autoGainControl: 'controllo automatico del volume' };
 
-function processingFix() {
+export function processingFix() {
   const p = platform();
   if (p === 'ios') return 'Su iPhone apri il Centro di Controllo mentre ascolti: se compare "Modalità microfono", scegli "Standard".';
   if (p === 'android') return 'Se il telefono ha effetti come "Isolamento voce" o "Audio chiaro" (spesso nel pannello rapido durante l\'uso del microfono), disattivali.';

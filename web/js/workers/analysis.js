@@ -7,6 +7,7 @@ import { analyzeLung } from '../dsp/lung.js';
 import { decimateOffline, HEART_BAND, LUNG_BAND } from '../dsp/frontend.js';
 import { spectrogram } from '../dsp/stft.js';
 import { nextPow2 } from '../dsp/fft.js';
+import { assessRecording } from '../dsp/quality.js';
 
 function heartTimes(h) {
   return h.s1.concat(h.s2, h.s3, h.s4);
@@ -49,7 +50,8 @@ function runLive() {
     };
     if (seg.mode === 'lung' && lung) {
       const shift = (heart.startRaw - lung.startRaw) / fsRaw;
-      const l = analyzeLung(lung.y, lung.fs, { heartTimes: heartTimes(h).map((t) => t + shift) });
+      const artifacts = (lung.artifacts || []).map(([a, b]) => [(a - lung.startRaw) / fsRaw, (b - lung.startRaw) / fsRaw]);
+      const l = analyzeLung(lung.y, lung.fs, { heartTimes: heartTimes(h).map((t) => t + shift), artifacts });
       out.lung = packLung(l, lung.startRaw, fsRaw);
       out.lungSpan = [lung.startRaw, lung.startRaw + Math.round((lung.y.length / lung.fs) * fsRaw)];
     }
@@ -111,14 +113,15 @@ function display(x, fs, kind, h) {
 }
 
 function analyzeRecording({ samples, fs, kind, view }) {
+  const quality = assessRecording(samples, fs);
   const dh = decimateOffline(samples, fs, HEART_BAND.lo, HEART_BAND.hi, HEART_BAND.fs);
   const h = analyzeHeart(dh.y, dh.fs);
   let l = null;
   if (kind === 'lung') {
     const dl = decimateOffline(samples, fs, LUNG_BAND.lo, LUNG_BAND.hi, LUNG_BAND.fs);
-    l = analyzeLung(dl.y, dl.fs, { heartTimes: heartTimes(h) });
+    l = analyzeLung(dl.y, dl.fs, { heartTimes: heartTimes(h), artifacts: quality.artifacts });
   }
-  return { heart: h, lung: l, ...display(view || samples, fs, kind, h), duration: samples.length / fs, fs };
+  return { heart: h, lung: l, quality, ...display(view || samples, fs, kind, h), duration: samples.length / fs, fs };
 }
 
 function transfers(res) {

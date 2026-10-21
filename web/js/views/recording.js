@@ -13,7 +13,7 @@ import { encodeWav } from '../audio/wav.js';
 import { drawWaveView, drawSpecView, buildSpecImage, specLevels, drawEnsemble, drawProfile, drawCycleSpec, drawResp } from '../ui/charts.js';
 import { fitCanvas } from '../ui/canvas.js';
 import { icon } from '../ui/icons.js';
-import { heartSummaryLines, lungSummaryLines, qualityBadge, inputBadges, isHeartAbnormal, isLungAbnormal } from './common.js';
+import { heartSummaryLines, lungSummaryLines, qualityBadge, qualityNotes, isDisturbed, inputBadges, isHeartAbnormal, isLungAbnormal } from './common.js';
 
 const n0 = (v) => fmtNum(v, 0);
 
@@ -58,7 +58,7 @@ export async function mount(view, [id]) {
       <button class="icon-btn" data-zout title="Zoom indietro">${icon('zoomOut')}</button>
       <button class="icon-btn" data-zfit title="Tutto">${icon('fit')}</button>
     </div>
-    <div class="tiny muted">Trascina sul grafico per selezionare un tratto da ripetere · tocca per posizionare il cursore · zoom con due dita o Ctrl+rotella · la barra in basso sposta la vista.</div>
+    <div class="tiny muted">Trascina sul grafico per selezionare un tratto da ripetere · tocca per posizionare il cursore · zoom con due dita o Ctrl+rotella · la barra in basso sposta la vista<span data-arthint></span>.</div>
     <div class="grid two" style="margin-top:12px">
       <div class="card col" data-summary><b>Analisi automatica</b><div class="muted small">…</div></div>
       <div class="card col" data-charts></div>
@@ -101,6 +101,7 @@ export async function mount(view, [id]) {
     specImg = buildSpecImage(res.spec, settings.colormap, lo, hi);
     q('[data-loading]').classList.add('hidden');
     summary = summarize(res, kind);
+    q('[data-arthint]').textContent = res.quality && res.quality.artifacts.length ? ' · in rosso i tratti disturbati' : '';
     if (JSON.stringify(summary) !== JSON.stringify(rec.analysis || {})) {
       rec.analysis = summary;
       rec.abnormal = kind === 'lung' ? isLungAbnormal(summary.lung) : isHeartAbnormal(summary.heart);
@@ -159,6 +160,11 @@ export async function mount(view, [id]) {
     const { W, H, dpr, ctx } = fitCanvas(o);
     ctx.clearRect(0, 0, W, H);
     const x = (t) => ((t - vw[0]) / (vw[1] - vw[0])) * W;
+    // tratti disturbati (sfregamento, urti, saturazione), esclusi dall'analisi dei crepitii
+    if (res && res.quality) {
+      ctx.fillStyle = 'rgba(248,113,113,0.13)';
+      for (const [a, b] of res.quality.artifacts) if (b > vw[0] && a < vw[1]) ctx.fillRect(x(a), 0, x(b) - x(a), H);
+    }
     if (selection) {
       ctx.fillStyle = 'rgba(45,212,191,0.16)';
       ctx.fillRect(x(selection[0]), 0, x(selection[1]) - x(selection[0]), H);
@@ -192,7 +198,7 @@ export async function mount(view, [id]) {
   const frame = () => {
     if (dirtyBase) { dirtyBase = false; drawBase(); }
     const o = q('[data-over]');
-    const key = JSON.stringify([selection, cursor, vw, player.position(), loopMode, o.clientWidth, o.clientHeight]);
+    const key = JSON.stringify([selection, cursor, vw, player.position(), loopMode, o.clientWidth, o.clientHeight, !!res]);
     if (key !== overKey) { overKey = key; drawOverlay(); }
     raf = requestAnimationFrame(frame);
   };
@@ -204,7 +210,9 @@ export async function mount(view, [id]) {
     const l = res.lung && res.lung.metrics;
     const lines = rec.kind === 'lung' ? lungSummaryLines(summary.lung).concat(heartSummaryLines(summary.heart).slice(0, 1)) : heartSummaryLines(summary.heart);
     const kv = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
-    box.innerHTML = `<div class="row between"><b>Analisi automatica</b>${qualityBadge(rec.kind === 'lung' ? l && l.sqi : h && h.sqi)}</div>
+    const notes = qualityNotes(summary.quality, rec.kind);
+    box.innerHTML = `<div class="row between"><b>Analisi automatica</b>${isDisturbed(summary.quality) ? '<span class="badge bad">Registrazione disturbata</span>' : qualityBadge(rec.kind === 'lung' ? l && l.sqi : h && h.sqi)}</div>
+      ${notes.length ? `<div class="advice warn"><b>${esc(notes[0])}</b>${notes.slice(1).map((x) => `<div class="small">${esc(x)}</div>`).join('')}</div>` : ''}
       <div class="seg" data-kind><button data-v="heart">${icon('heart', 'sm')} Cuore</button><button data-v="lung">${icon('lungs', 'sm')} Torace</button></div>
       ${lines.length ? `<ul class="small" style="margin:0;padding-left:1.1rem">${lines.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : `<div class="small muted">${esc((res.heart && res.heart.reason) || 'Nessun reperto significativo rilevato')}</div>`}
       ${rec.kind !== 'lung' && h ? `<dl class="kv">

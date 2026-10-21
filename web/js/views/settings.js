@@ -26,6 +26,7 @@ export async function mount(view) {
           <label class="field"><span>Esame guidato: torace (s)</span><input type="number" min="5" max="60" value="${settings.guidedLungS}" data-gl></label>
           <label class="field"><span>Conto alla rovescia (s)</span><input type="number" min="0" max="10" value="${settings.guidedCountdown}" data-gc></label>
         </div>
+        <label class="check"><input type="checkbox" data-gwc ${settings.guidedWaitClean ? 'checked' : ''}> Esame guidato: aspetta un segnale senza disturbi prima di registrare</label>
       </div>
       <div class="card col">
         <h3>${icon('layers')} Visualizzazione</h3>
@@ -88,6 +89,7 @@ export async function mount(view) {
   q('[data-gh]').onchange = (e) => updateSettings({ guidedHeartS: Math.max(5, +e.target.value) });
   q('[data-gl]').onchange = (e) => updateSettings({ guidedLungS: Math.max(5, +e.target.value) });
   q('[data-gc]').onchange = (e) => updateSettings({ guidedCountdown: Math.max(0, +e.target.value) });
+  q('[data-gwc]').onchange = (e) => updateSettings({ guidedWaitClean: e.target.checked });
 
   // --- visualizzazione ---
   const th = q('[data-theme]');

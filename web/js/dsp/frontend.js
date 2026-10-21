@@ -13,6 +13,7 @@ export class Decimator {
     this.ring = new Float32Array(this.cap);
     this.wpos = 0;
     this.count = 0;
+    this.base = 0; // indice grezzo da cui riparte il conteggio dopo reset()
     this.phase = 0;
     this.tmp = new Float32Array(4096);
   }
@@ -34,10 +35,11 @@ export class Decimator {
     const out = new Float32Array(n);
     const start = (this.wpos - n + this.cap) % this.cap;
     for (let i = 0; i < n; i++) out[i] = this.ring[(start + i) % this.cap];
-    return { y: out, startRaw: (this.count - n) * this.D };
+    return { y: out, startRaw: this.base + (this.count - n) * this.D };
   }
-  reset() {
+  reset(atRaw = 0) {
     this.filter.reset();
+    this.base = atRaw;
     this.count = 0;
     this.wpos = 0;
     this.phase = 0;

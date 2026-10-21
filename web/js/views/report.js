@@ -9,7 +9,7 @@ import { processSignal } from '../audio/player.js';
 import { recordingFilter } from '../presets.js';
 import { renderThumb } from '../ui/charts.js';
 import { settings } from '../settings.js';
-import { heartSummaryLines, lungSummaryLines, heartFindingText, lungFindingText } from './common.js';
+import { heartSummaryLines, lungSummaryLines, qualityNotes, heartFindingText, lungFindingText } from './common.js';
 
 const THUMB_SECONDS = 8; // durata mostrata nelle miniature dei tracciati
 
@@ -29,13 +29,13 @@ export async function mount(view, [id]) {
   const heartRows = HEART_SITES.map((s) => {
     const f = heartFindingText((visit.heart || {})[s.id]);
     const r = latest(s.id);
-    const a = r ? heartSummaryLines(r.analysis.heart).join('; ') : '';
+    const a = r ? heartSummaryLines(r.analysis.heart).concat(qualityNotes(r.analysis.quality, 'heart')).join('; ') : '';
     return f || a ? `<tr><td><b>${esc(s.full)}</b><br><span style="color:#64748b">${esc(s.where)}</span></td><td>${esc(f) || '—'}</td><td>${esc(a) || '—'}</td></tr>` : '';
   }).join('');
   const lungRows = LUNG_SITES.map((s) => {
     const f = lungFindingText((visit.lung || {})[s.id]);
     const r = latest(s.id);
-    const a = r ? lungSummaryLines(r.analysis.lung).join('; ') : '';
+    const a = r ? lungSummaryLines(r.analysis.lung).concat(qualityNotes(r.analysis.quality, 'lung')).join('; ') : '';
     return f || a ? `<tr><td><b>${esc(s.full)}</b></td><td>${esc(f) || '—'}</td><td>${esc(a) || '—'}</td></tr>` : '';
   }).join('');
 

@@ -49,6 +49,7 @@ const r1 = (v, d = 0) => (v === null || v === undefined || !Number.isFinite(v) ?
 export function summarize(res, kind) {
   const h = res.heart && res.heart.metrics;
   const out = { duration: r1(res.duration, 1) };
+  if (res.quality) out.quality = { artifactPct: res.quality.artifactPct, issues: res.quality.issues };
   if (h) {
     out.heart = {
       bpm: r1(h.bpm), bpmStd: r1(h.bpmStd, 1), rhythm: h.rhythm, rrCv: r1(h.rrCv, 3), nBeats: h.nBeats,

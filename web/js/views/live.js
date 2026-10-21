@@ -7,6 +7,7 @@ import { HEART_SITES, LUNG_SITES, HEART_TIPS, LUNG_TIPS, siteById } from '../sit
 import { presetsFor, getPreset, EQ_LIVE_ID } from '../presets.js';
 import { LiveEngine, listInputs } from '../audio/engine.js';
 import { INPUT_TYPES, INPUT_KINDS, inputAdvice, inputRecord, worstLevel, diagnosticsText } from '../audio/input.js';
+import { Coach, Tally, coachState, ISSUE_NAMES } from '../coach.js';
 import { DEMO_SCENARIOS } from '../audio/demo.js';
 import { encodeWav, decodeAny } from '../audio/wav.js';
 import { analyzeSamples, summarize } from '../audio/analyzer.js';
@@ -42,9 +43,13 @@ export async function mount(view, params, query) {
   let bands = getPreset(presetId).bands;
   const engine = new LiveEngine();
   let running = false, starting = false, recording = false, frozen = false;
-  let lastHeart = null, lastLung = null, lastPeak = -120, weakSince = 0;
+  let lastHeart = null, lastLung = null;
   let wakeLock = null, raf = 0, guided = null, guidedTimer = 0;
   let inputInfo = null, advice = [], inputMuted = false;
+  // assistente: stato mostrato, ultime misure di qualità, disturbi durante la registrazione
+  const coach = new Coach();
+  let coachCur = null, lastQuality = null, recTally = null, lastRecTally = null, coachSince = 0;
+  const qualityListeners = new Set();
 
   function initialPreset() {
     const s = siteById(site);
@@ -201,6 +206,7 @@ export async function mount(view, params, query) {
     presetId = initialPreset();
     bands = getPreset(presetId).bands;
     lastHeart = lastLung = null;
+    coachSince = performance.now();
     scope.reset();
     wf.lung = null;
     if (engine.running) {
@@ -314,19 +320,28 @@ export async function mount(view, params, query) {
   }
 
   // ---------- ingresso: tipo, avvisi, diagnostica ----------
+  const sourceName = () => (engine.source === 'mic' ? INPUT_TYPES[inputInfo ? inputInfo.type : 'unknown'].short : engine.source === 'demo' ? 'Simulatore' : 'File audio');
+  const stateNow = (quality) => coachState({
+    quality, mode, source: engine.source, kind: settings.inputKind, heart: lastHeart, lung: lastLung, advice, muted: inputMuted, inputName: sourceName(),
+    settled: performance.now() - coachSince > (mode === 'lung' ? 12000 : 6000),
+  });
+
+  function updateCoach(quality) {
+    lastQuality = quality;
+    const st = stateNow(quality);
+    coachCur = coach.update(st, performance.now());
+    if (recording && recTally) recTally.add(st);
+    renderPill();
+    for (const fn of qualityListeners) fn(quality, st);
+  }
+
   function renderPill() {
     const pill = q('[data-qpill]');
     if (!running) { pill.classList.add('hidden'); return; }
-    let level = 'ok', text;
-    if (engine.source !== 'mic') text = engine.source === 'demo' ? 'Simulatore' : 'File audio';
-    else if (inputMuted) { level = 'bad'; text = 'Ingresso sospeso dal sistema'; }
-    else {
-      level = worstLevel(advice);
-      text = INPUT_TYPES[inputInfo ? inputInfo.type : 'unknown'].short;
-      if (level !== 'ok') text += ` · ${advice.find((a) => a.level === level).text.split(/[:.]/)[0]}`;
-    }
-    pill.className = `q-pill ${level}`;
-    pill.innerHTML = `<i></i><span>${esc(text)}</span>`;
+    const c = coachCur || stateNow(null);
+    pill.className = `q-pill ${c.level}`;
+    pill.title = c.fix || 'Ingresso e qualità del segnale';
+    pill.innerHTML = `<i></i><span>${esc(c.text)}</span>`;
   }
 
   async function openInputSheet() {
@@ -335,7 +350,11 @@ export async function mount(view, params, query) {
     const live = running && engine.source === 'mic' && inputInfo;
     const i = inputInfo;
     const state = (v) => (v === true ? 'attiva' : v === false ? 'spenta' : 'n.d.');
+    const now = running ? coachCur || stateNow(lastQuality) : null;
+    const lq = lastQuality;
     const body = el(`<div class="col">
+      ${now ? `<div class="advice ${now.level === 'ok' ? 'ok' : now.level}"><b>Ora: ${esc(now.text)}</b>${now.fix ? `<div class="small">${esc(now.fix)}</div>` : ''}
+        ${lq ? `<div class="tiny muted">Picco ${n0(lq.peakDb)} dB · rumore di fondo ${n0(lq.floorDb)} dB${lq.humDb > 6 ? ` · righe a 50/60 Hz +${lq.humDb} dB` : ''}</div>` : ''}</div>` : ''}
       ${live ? `<dl class="kv">
         <dt>Ingresso</dt><dd>${esc(INPUT_TYPES[i.type].name)}<div class="tiny muted">${esc(i.label || 'senza nome')}</div></dd>
         <dt>Uso dichiarato</dt><dd>${esc(kindName)}</dd>
@@ -381,15 +400,10 @@ export async function mount(view, params, query) {
     scope.push(d);
     wf.push(d.cols, d.ncols, d.total);
     if (d.peakDb !== undefined) {
-      lastPeak = d.peakDb;
       const lv = q('[data-level]');
       lv.style.width = `${Math.max(0, Math.min(100, ((d.peakDb + 70) / 70) * 100))}%`;
-      if (d.peakDb > -1) q('[data-scopetag]').textContent = 'Segnale saturato: riduci il volume d\'ingresso';
-      if (d.peakDb < -60 && engine.source === 'mic') {
-        if (!weakSince) weakSince = performance.now();
-        else if (performance.now() - weakSince > 4000) { weakSince = performance.now() + 20000; toast('Segnale molto debole: controlla il jack del fonendoscopio e il volume d\'ingresso del dispositivo', { type: 'warn' }); }
-      } else if (weakSince && weakSince < performance.now()) weakSince = 0;
     }
+    if (d.quality) updateCoach(d.quality);
     if (recording && d.recSeconds !== null) {
       const t = q('[data-rectime]');
       if (t) t.textContent = fmtDur(d.recSeconds);
@@ -414,7 +428,7 @@ export async function mount(view, params, query) {
     toast('Ingresso audio scollegato: ricollega il fonendo e riavvia l’ascolto.', { type: 'error', timeout: 8000 });
     await stop();
   });
-  engine.on('inputmute', (m) => { inputMuted = m; renderPill(); });
+  engine.on('inputmute', (m) => { inputMuted = m; coachCur = null; renderPill(); });
   engine.on('devicechange', () => {
     if (!running) return;
     toast('Gli ingressi audio sono cambiati (cavo o cuffie Bluetooth): controlla che il suono arrivi ancora dal fonendo.', {
@@ -439,6 +453,9 @@ export async function mount(view, params, query) {
         config: liveConfig(),
       });
       running = true;
+      coach.reset();
+      coachCur = lastQuality = null;
+      coachSince = performance.now();
       scope.setRate(engine.sampleRate, Math.round(engine.sampleRate / 1000));
       scope.reset();
       reconfigure();
@@ -493,6 +510,7 @@ export async function mount(view, params, query) {
 
   function startRecording() {
     if (!running || recording) return;
+    recTally = new Tally();
     engine.startRecording();
     recording = true;
     renderButtons();
@@ -501,9 +519,16 @@ export async function mount(view, params, query) {
   async function stopRecording(extra) {
     if (!recording) return null;
     recording = false;
+    lastRecTally = recTally;
+    recTally = null;
     renderButtons();
     const r = await engine.stopRecording();
-    return r ? saveRec(r.samples, r.fs, extra) : null;
+    const saved = r ? await saveRec(r.samples, r.fs, extra) : null;
+    const w = lastRecTally && lastRecTally.worst();
+    if (saved && w && w.total > 0.3 && !(extra && extra.guided)) {
+      toast(`Registrazione disturbata: ${ISSUE_NAMES[w.key]} nel ${Math.round(w.frac * 100)}% del tempo`, { type: 'warn', timeout: 6000, action: { label: 'Apri', run: () => { location.hash = `#/rec/${saved.id}`; } } });
+    }
+    return saved;
   }
 
   async function grab() {
@@ -513,6 +538,7 @@ export async function mount(view, params, query) {
   }
 
   // ---------- esame guidato ----------
+  // fasi: ready → count → (wait: segnale non pulito) → rec → saving → (review: tratto disturbato) → ready…
   function guidedList() { return mode === 'heart' ? HEART_SITES : LUNG_SITES; }
 
   async function startGuided() {
@@ -555,7 +581,16 @@ export async function mount(view, params, query) {
       const left = Math.ceil(settings.guidedCountdown - (now - guided.t0) / 1000);
       const c = q('[data-banner] .count');
       if (c) c.textContent = left;
-      if (left <= 0) { guided.phase = 'rec'; guided.t0 = now; startRecording(); renderGuided(); }
+      if (left <= 0) {
+        if (settings.guidedWaitClean && coachCur && coachCur.level !== 'ok') { guided.phase = 'wait'; renderGuided(); }
+        else { guided.phase = 'rec'; guided.t0 = now; startRecording(); renderGuided(); }
+      }
+    } else if (guided.phase === 'wait') {
+      if (!coachCur || coachCur.level === 'ok') { guided.phase = 'rec'; guided.t0 = now; startRecording(); renderGuided(); }
+      else {
+        const t = q('[data-banner] [data-gwait]');
+        if (t && t.dataset.k !== coachCur.key) { t.dataset.k = coachCur.key; t.innerHTML = `<b>${esc(coachCur.text)}</b><div class="small">${esc(coachCur.fix)}</div>`; }
+      }
     } else if (guided.phase === 'rec') {
       const el2 = (now - guided.t0) / 1000;
       const bar = q('[data-banner] .progress i');
@@ -568,6 +603,8 @@ export async function mount(view, params, query) {
         const saved = await stopRecording({ guided: true });
         if (!guided) return;
         if (saved) guided.saved++;
+        const w = lastRecTally && lastRecTally.worst();
+        if (saved && w && w.total > 0.3) { guided.phase = 'review'; guided.review = { rec: saved, w }; renderGuided(); return; }
         guidedNext();
       }
     }
@@ -591,6 +628,14 @@ export async function mount(view, params, query) {
       b.innerHTML = `${head}<div class="row"><div class="count">${settings.guidedCountdown}</div><div><b>${esc(s.full)}</b><div class="small">Tieni ferma la mano…</div></div></div>`;
     } else if (guided.phase === 'rec') {
       b.innerHTML = `${head}<div class="row between" style="margin:6px 0"><b>${icon('rec', 'sm')} ${esc(s.full)}</b><span class="num" data-gt>${guided.dur} s</span></div><div class="progress"><i style="width:0%"></i></div>`;
+    } else if (guided.phase === 'wait') {
+      b.innerHTML = `${head}<div class="small muted" style="margin-top:6px">In attesa di un segnale pulito per registrare ${esc(s.full)}…</div>
+        <div class="advice warn" data-gwait style="margin:6px 0"></div>
+        <div class="row"><button class="btn" data-gforce>${icon('rec', 'sm')} Registra comunque</button></div>`;
+    } else if (guided.phase === 'review') {
+      const w = guided.review.w;
+      b.innerHTML = `${head}<div class="advice warn" style="margin:6px 0"><b>Tratto disturbato: ${esc(ISSUE_NAMES[w.key] || 'disturbi')} nel ${Math.round(w.frac * 100)}% del tempo</b><div class="small">I risultati di questo punto potrebbero non essere attendibili.</div></div>
+        <div class="row"><button class="btn primary" data-gredo>${icon('refresh', 'sm')} Scarta e ripeti</button><button class="btn" data-gkeep>Tieni e prosegui</button></div>`;
     } else {
       b.innerHTML = `${head}<div class="small">Salvataggio…</div>`;
     }
@@ -601,6 +646,18 @@ export async function mount(view, params, query) {
     if (sk) sk.onclick = guidedNext;
     const cl = b.querySelector('[data-gclose]');
     if (cl) cl.onclick = () => stopGuided(false);
+    const force = b.querySelector('[data-gforce]');
+    if (force) force.onclick = () => { guided.phase = 'rec'; guided.t0 = performance.now(); startRecording(); renderGuided(); };
+    const redo = b.querySelector('[data-gredo]');
+    if (redo) redo.onclick = async () => {
+      await repo.deleteRecording(guided.review.rec.id);
+      guided.saved--;
+      guided.phase = 'ready';
+      renderSiteRecs();
+      renderGuided();
+    };
+    const keep = b.querySelector('[data-gkeep]');
+    if (keep) keep.onclick = guidedNext;
   }
 
   // ---------- selettore del punto ----------

@@ -141,6 +141,22 @@ export function isLungAbnormal(l) {
   return !!l && (l.cracklesSignificant || l.wheezes > 0 || l.rhonchi > 0);
 }
 
+// Disturbi riconosciuti nell'analisi di una registrazione (analysis.quality) e loro
+// conseguenze sull'attendibilità dei risultati.
+const ISSUE_LABELS = { friction: 'sfregamento', move: 'urti', voice: 'voce', hum: 'ronzio di rete', clip: 'saturazione' };
+export function qualityNotes(q, kind) {
+  if (!q || !q.issues) return [];
+  const found = Object.entries(q.issues).filter(([, v]) => v >= 20).map(([k, v]) => `${ISSUE_LABELS[k]} nel ${v}% del tempo`);
+  if (!found.length) return [];
+  const notes = [`Disturbi: ${found.join(', ')}`];
+  if (kind === 'lung' && q.artifactPct >= 5) notes.push(`Il ${q.artifactPct}% della registrazione è escluso dal conteggio dei crepitii`);
+  if (kind !== 'lung' && q.issues.voice >= 20) notes.push('La voce può sembrare un soffio: valuta i soffi con cautela');
+  if (isDisturbed(q)) notes.push('Risultati poco attendibili: meglio ripetere la registrazione');
+  return notes;
+}
+
+export const isDisturbed = (q) => !!(q && q.issues && (q.artifactPct >= 50 || Object.values(q.issues).some((v) => v >= 60)));
+
 // Avvisi sull'ingresso con cui è stata fatta una registrazione.
 export function inputBadges(rec) {
   const i = rec.input;

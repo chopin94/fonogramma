@@ -47,6 +47,7 @@ export const DEFAULTS = {
   guidedHeartS: 15,
   guidedLungS: 20,
   guidedCountdown: 3,
+  guidedWaitClean: true, // l'esame guidato aspetta un segnale senza disturbi prima di registrare
   lastMode: 'heart',
 };
 

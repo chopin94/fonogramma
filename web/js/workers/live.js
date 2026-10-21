@@ -3,6 +3,7 @@
 // ("ultimi N secondi") e le registrazioni, e invia segmenti decimati al worker di analisi.
 import { StftStream } from '../dsp/stft.js';
 import { Decimator, HEART_BAND, LUNG_BAND } from '../dsp/frontend.js';
+import { QualityMonitor } from '../dsp/quality.js';
 
 let fs = 48000;
 let cfg = { mode: 'heart', wfSource: 'filtered', loopSeconds: 30, wf: { fftSize: 4096, hop: 256, rows: 384, fMin: 20, fMax: 800, scale: 'lin' } };
@@ -15,6 +16,8 @@ let rec = null;
 let lastSeg = 0, lastLungSeg = 0;
 let bucket = 48, bCount = 0, bMin = Infinity, bMax = -Infinity, bRMin = Infinity, bRMax = -Infinity;
 let levelPeak = 0, levelSq = 0, levelN = 0;
+let qm = null, lastQ = 0;
+let artifacts = []; // tratti disturbati recenti [inizio, fine] in campioni grezzi
 
 function setupStft() {
   const w = cfg.wf;
@@ -81,6 +84,7 @@ function onAudio(e) {
   const { cols, n: ncols } = stft.push(cfg.wfSource === 'raw' ? raw : fil);
   heartFE.push(raw);
   if (cfg.mode === 'lung') lungFE.push(raw);
+  qm.push(raw);
   total += n;
 
   const msg = {
@@ -94,6 +98,16 @@ function onAudio(e) {
     msg.rmsDb = 10 * Math.log10(levelSq / levelN + 1e-18);
     levelPeak = 0; levelSq = 0; levelN = 0;
   }
+  // qualità del segnale ogni 0,5 s sugli ultimi 2 s
+  if (total - lastQ >= 0.5 * fs) {
+    lastQ = total;
+    const q = qm.evaluate(2);
+    if (q) {
+      for (const iv of q.artifacts) addArtifact(iv);
+      const { artifacts: _, ...rest } = q;
+      msg.quality = rest;
+    }
+  }
   postMessage(msg, tr);
 
   if (analysisPort && total - lastSeg >= 0.5 * fs) {
@@ -104,11 +118,18 @@ function onAudio(e) {
     if (cfg.mode === 'lung' && total - lastLungSeg >= 1.0 * fs) {
       lastLungSeg = total;
       const l = lungFE.latest(10);
-      seg.lung = { y: l.y, fs: lungFE.fsOut, startRaw: l.startRaw };
+      seg.lung = { y: l.y, fs: lungFE.fsOut, startRaw: l.startRaw, artifacts: artifacts.filter((iv) => iv[1] > l.startRaw) };
       trs.push(l.y.buffer);
     }
     analysisPort.postMessage(seg, trs);
   }
+}
+
+function addArtifact([a, b]) {
+  const last = artifacts[artifacts.length - 1];
+  if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+  else artifacts.push([a, b]);
+  while (artifacts.length && artifacts[0][1] < total - 30 * fs) artifacts.shift();
 }
 
 onmessage = (e) => {
@@ -119,6 +140,7 @@ onmessage = (e) => {
       bucket = Math.max(1, Math.round(fs / 1000));
       heartFE = new Decimator(fs, HEART_BAND.lo, HEART_BAND.hi, HEART_BAND.fs, 12);
       lungFE = new Decimator(fs, LUNG_BAND.lo, LUNG_BAND.hi, LUNG_BAND.fs, 12);
+      qm = new QualityMonitor(fs);
       configure(m.config || {});
       m.audioPort.onmessage = onAudio;
       analysisPort = m.analysisPort || null;
@@ -127,7 +149,7 @@ onmessage = (e) => {
     case 'config': {
       const prevMode = cfg.mode;
       configure(m.config);
-      if (cfg.mode !== prevMode && cfg.mode === 'lung') lungFE.reset();
+      if (cfg.mode !== prevMode && cfg.mode === 'lung') lungFE.reset(total);
       break;
     }
     case 'rec-start':

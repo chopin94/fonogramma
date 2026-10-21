@@ -49,11 +49,14 @@ const LUNG = {
   ronchi: (l) => { assert.ok(l.rhonchi > 0, 'ronchi non rilevati'); assert.equal(l.wheezes, 0); },
 };
 
+// gli scenari di disturbo sono verificati in quality.test.mjs
+const CLINICAL = DEMO_SCENARIOS.filter((s) => !s.disturbance);
+
 test('ogni scenario del simulatore ha un test', () => {
-  for (const s of DEMO_SCENARIOS) assert.ok(HEART[s.id] || LUNG[s.id], `manca il test per "${s.id}"`);
+  for (const s of CLINICAL) assert.ok(HEART[s.id] || LUNG[s.id], `manca il test per "${s.id}"`);
 });
 
-for (const s of DEMO_SCENARIOS) {
+for (const s of CLINICAL) {
   test(`${s.mode === 'lung' ? 'torace' : 'cuore'}: ${s.name}`, () => {
     const r = analyze(s.id);
     if (s.mode === 'lung') {

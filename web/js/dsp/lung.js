@@ -15,7 +15,9 @@ function emptyMetrics() {
   };
 }
 
-export function analyzeLung(y, fs, { heartTimes = [] } = {}) {
+// artifacts: tratti disturbati (sfregamento, urti, saturazione) in secondi dall'inizio di
+// y: i crepitii che cadono lì non si contano e le frequenze si riferiscono al tempo pulito.
+export function analyzeLung(y, fs, { heartTimes = [], artifacts = [] } = {}) {
   const n = y.length, dur = n / fs;
   const res = {
     ok: false, kind: 'lung', duration: dur, reason: '',
@@ -190,7 +192,7 @@ export function analyzeLung(y, fs, { heartTimes = [] } = {}) {
       let pkI = s0;
       for (let k = s0; k <= e; k++) if (absY[k] > absY[pkI]) pkI = k;
       const tp = pkI / fs;
-      if (absY[pkI] >= 3.5 * bg && !heartTimes.some((h) => tp - h > -0.06 && tp - h < 0.13)) {
+      if (absY[pkI] >= 3.5 * bg && !heartTimes.some((h) => tp - h > -0.06 && tp - h < 0.13) && !artifacts.some(([a, b]) => tp >= a && tp <= b)) {
         const c = crackleShape(y, fs, pkI);
         if (c) res.crackles.push({ t: pkI / fs, ...c });
       }
@@ -209,8 +211,10 @@ export function analyzeLung(y, fs, { heartTimes = [] } = {}) {
   met.crackles = res.crackles.length;
   met.cracklesFine = res.crackles.filter((c) => c.type === 'fine').length;
   met.cracklesCoarse = met.crackles - met.cracklesFine;
-  met.cracklesPerMin = (met.crackles / dur) * 60;
-  const nBreaths = met.rr ? Math.max(1, (dur * met.rr) / 60) : null;
+  const artS = artifacts.reduce((s, [a, b]) => s + Math.max(0, Math.min(b, dur) - Math.max(a, 0)), 0);
+  const cleanDur = Math.max(0.25 * dur, dur - artS);
+  met.cracklesPerMin = (met.crackles / cleanDur) * 60;
+  const nBreaths = met.rr ? Math.max(1, (cleanDur * met.rr) / 60) : null;
   met.cracklesPerBreath = nBreaths ? met.crackles / nBreaths : null;
   met.cracklesSignificant = nBreaths ? met.cracklesPerBreath >= 3 : met.cracklesPerMin >= 40;
   const withPh = res.crackles.filter((c) => c.phase);
