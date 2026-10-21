@@ -3,6 +3,7 @@
 // AudioWorklet → worker real-time → worker di analisi.
 import { buildChain, makeLimiter, dbToGain } from './graph.js';
 import { generateDemo } from './demo.js';
+import { inspectInput } from './input.js';
 
 const TAP_URL = new URL('./worklets/tap.js', import.meta.url);
 const DENOISE_URL = new URL('./worklets/denoise.js', import.meta.url);
@@ -76,10 +77,20 @@ export class LiveEngine {
     await abortIfStale(stream, ctx);
 
     let src;
+    this.input = null;
     if (stream) {
       src = ctx.createMediaStreamSource(stream);
       const track = stream.getAudioTracks()[0];
       this.inputLabel = track ? track.label : 'Microfono';
+      if (track) {
+        this.input = inspectInput(stream, ctx);
+        // cavo staccato o ingresso tolto dal sistema
+        track.onended = () => { if (gen === this.gen) this.emit('inputlost'); };
+        track.onmute = () => { if (gen === this.gen) this.emit('inputmute', true); };
+        track.onunmute = () => { if (gen === this.gen) this.emit('inputmute', false); };
+      }
+      this.onDevices = () => { if (gen === this.gen) this.emit('devicechange'); };
+      navigator.mediaDevices.addEventListener?.('devicechange', this.onDevices);
     } else {
       const data = source === 'demo' ? generateDemo(demoId, ctx.sampleRate, 30) : file.samples;
       const rate = source === 'demo' ? ctx.sampleRate : file.sampleRate;
@@ -140,7 +151,7 @@ export class LiveEngine {
     if (ctx.state === 'suspended') await ctx.resume();
     this.running = true;
     this.source = source;
-    this.emit('state', { running: true, fs: ctx.sampleRate, label: this.inputLabel });
+    this.emit('state', { running: true, fs: ctx.sampleRate, label: this.inputLabel, input: this.input });
   }
 
   onWorker(d) {
@@ -190,7 +201,9 @@ export class LiveEngine {
     try { this.worker && this.worker.terminate(); } catch {}
     try { this.anaWorker && this.anaWorker.terminate(); } catch {}
     this.worker = this.anaWorker = null;
-    if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
+    if (this.onDevices) navigator.mediaDevices.removeEventListener?.('devicechange', this.onDevices);
+    this.onDevices = null;
+    if (this.stream) this.stream.getTracks().forEach((t) => { t.onended = t.onmute = t.onunmute = null; t.stop(); });
     this.stream = null;
     if (this.ctx) { try { await this.ctx.close(); } catch {} }
     this.ctx = null;

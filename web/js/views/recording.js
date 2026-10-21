@@ -13,7 +13,7 @@ import { encodeWav } from '../audio/wav.js';
 import { drawWaveView, drawSpecView, buildSpecImage, specLevels, drawEnsemble, drawProfile, drawCycleSpec, drawResp } from '../ui/charts.js';
 import { fitCanvas } from '../ui/canvas.js';
 import { icon } from '../ui/icons.js';
-import { heartSummaryLines, lungSummaryLines, qualityBadge, isHeartAbnormal, isLungAbnormal } from './common.js';
+import { heartSummaryLines, lungSummaryLines, qualityBadge, inputBadges, isHeartAbnormal, isLungAbnormal } from './common.js';
 
 const n0 = (v) => fmtNum(v, 0);
 
@@ -30,7 +30,7 @@ export async function mount(view, [id]) {
       <div class="grow">
         <div class="small muted">${rec.visitId ? `<a href="#/visit/${esc(rec.visitId)}?tab=${rec.kind === 'lung' ? 'lung' : 'heart'}">${icon('chevL', 'sm')} Visita</a> · ` : ''}${esc(patientName(patient))}</div>
         <h1>${icon(rec.kind === 'lung' ? 'lungs' : 'heart')} ${esc(rec.label || siteName(rec.site))}</h1>
-        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc(recFilter.name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz</div>
+        <div class="small muted">${fmtDateTime(rec.createdAt)} · ${fmtDur(rec.duration)} · ${esc(recFilter.name)} · ${esc(rec.device || rec.source || '')} · ${n0(rec.fs)} Hz ${inputBadges(rec)}</div>
       </div>
       <div class="row">
         <button class="btn sm" data-wav title="Scarica l'audio come lo ascolti (filtro scelto; solo la selezione, se c'è)">${icon('download', 'sm')} WAV</button>

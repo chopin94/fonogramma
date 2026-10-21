@@ -141,6 +141,18 @@ export function isLungAbnormal(l) {
   return !!l && (l.cracklesSignificant || l.wheezes > 0 || l.rhonchi > 0);
 }
 
+// Avvisi sull'ingresso con cui è stata fatta una registrazione.
+export function inputBadges(rec) {
+  const i = rec.input;
+  if (!i) return '';
+  const out = [];
+  if (i.type === 'bluetooth') out.push('<span class="badge warn" title="Il Bluetooth riduce banda e qualità">Qualità limitata · Bluetooth</span>');
+  else if (i.rate && i.rate < 16000) out.push(`<span class="badge warn">Qualità limitata · ${i.rate} Hz</span>`);
+  if (i.processing && i.processing.length) out.push('<span class="badge warn" title="Il sistema dichiarava attive elaborazioni del microfono (riduzione rumore, volume automatico o eco)">Elaborata dal sistema</span>');
+  if (i.type === 'builtin') out.push('<span class="badge">Microfono del telefono</span>');
+  return out.join(' ');
+}
+
 export function qualityBadge(sqi) {
   if (sqi === null || sqi === undefined) return '';
   const cls = sqi >= 70 ? 'ok' : sqi >= 40 ? 'warn' : 'bad';

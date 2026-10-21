@@ -257,6 +257,18 @@ label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .plot-tag { position: absolute; right: 8px; top: 6px; font-size: .72rem; color: #c9d6f3; background: rgba(5, 10, 22, .65); padding: 2px 8px; border-radius: 99px; pointer-events: none; }
 .plot-tag.left { right: auto; left: 40px; }
+.q-pill { position: absolute; left: 8px; top: 6px; display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 16px); font: inherit; font-size: .74rem; font-weight: 700; color: #e6eeff; background: rgba(5, 10, 22, .78); border: 1px solid rgba(255, 255, 255, .14); padding: 3px 10px 3px 8px; border-radius: 99px; cursor: pointer; z-index: 2; }
+.q-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-pill i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+.q-pill.warn i { background: var(--warn); }
+.q-pill.bad i { background: var(--bad); }
+.q-pill.warn { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.q-pill.bad { border-color: color-mix(in srgb, var(--bad) 60%, transparent); }
+.advice { border-left: 3px solid var(--line); padding: 6px 10px; border-radius: 6px; background: var(--card2); display: flex; flex-direction: column; gap: 3px; }
+.advice.ok { border-left-color: var(--ok); }
+.advice.info { border-left-color: var(--accent); }
+.advice.warn { border-left-color: var(--warn); }
+.advice.bad { border-left-color: var(--bad); }
 .overlay-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #c9d6f3; padding: 20px; pointer-events: none; }
 .overlay-msg .card { pointer-events: auto; max-width: 420px; }
 .side { border-top: 1px solid var(--line); background: var(--bg); overflow: auto; }

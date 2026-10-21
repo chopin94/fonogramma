@@ -3,6 +3,7 @@
 import { esc, toast, confirmDialog, downloadBlob } from '../util.js';
 import { settings, updateSettings, applyTheme } from '../settings.js';
 import { listInputs } from '../audio/engine.js';
+import { INPUT_KINDS, INPUT_TYPES, classifyInput } from '../audio/input.js';
 import { COLORMAPS, lutCss } from '../ui/colormaps.js';
 import { openEqEditor } from '../ui/eqeditor.js';
 import { exportBackup, importBackup } from '../store/backup.js';
@@ -49,13 +50,23 @@ export async function mount(view) {
     const labels = devs.some((d) => d.label);
     const box = q('[data-input]');
     box.innerHTML = `<h3>${icon('mic')} Ingresso audio</h3>
-      <p class="small">Collega il fonendoscopio al jack (cuffie+microfono, connettore TRRS; sui telefoni senza jack usa un adattatore USB-C con ingresso microfono).</p>
+      <label class="field"><span>Come acquisisci il suono</span><select data-kind>${INPUT_KINDS.map((k) => `<option value="${k.id}" ${k.id === settings.inputKind ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></label>
+      <p class="small" data-kindhelp></p>
       <label class="field"><span>Dispositivo</span><select data-dev><option value="">Predefinito di sistema</option>
-        ${devs.map((d) => `<option value="${esc(d.deviceId)}" ${d.deviceId === settings.deviceId ? 'selected' : ''}>${esc(d.label || 'Ingresso audio')}</option>`).join('')}</select></label>
+        ${devs.map((d) => `<option value="${esc(d.deviceId)}" ${d.deviceId === settings.deviceId ? 'selected' : ''}>${esc(d.label || 'Ingresso audio')}${d.label ? ` · ${INPUT_TYPES[classifyInput(d.label)].short}` : ''}</option>`).join('')}</select></label>
       ${labels ? '' : `<button class="btn sm" data-perm>${icon('mic', 'sm')} Mostra i nomi degli ingressi (richiede il permesso)</button>`}
       <label class="field"><span>Canale</span><select data-ch>${[['mix', 'Mono (somma)'], ['L', 'Sinistro'], ['R', 'Destro']].map(([v, l]) => `<option value="${v}" ${settings.inputChannel === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-mon ${settings.monitor ? 'checked' : ''}> Ascolto in cuffia attivo all'avvio</label>
       <a class="btn" href="#/live">${icon('stetho', 'sm')} Prova l'ingresso</a>`;
+    const kindHelp = () => {
+      box.querySelector('[data-kindhelp]').textContent = {
+        stetho: 'Collega il fonendoscopio al jack con un cavo a 4 poli (TRRS, cuffie+microfono); sui telefoni senza jack usa un adattatore USB-C con ingresso microfono. Va bene anche un microfono o una scheda audio USB.',
+        phone: 'Il microfono principale del telefono (bordo inferiore) va appoggiato sulla pelle nuda. Adatto soprattutto al cuore.',
+        bt: 'Funzionano solo i fonendi che il telefono vede come normale microfono Bluetooth, con qualità ridotta. Quelli che richiedono un’app del produttore non sono accessibili da una pagina web.',
+      }[settings.inputKind] || '';
+    };
+    kindHelp();
+    box.querySelector('[data-kind]').onchange = (e) => { updateSettings({ inputKind: e.target.value }); kindHelp(); };
     box.querySelector('[data-dev]').onchange = (e) => updateSettings({ deviceId: e.target.value });
     box.querySelector('[data-ch]').onchange = (e) => updateSettings({ inputChannel: e.target.value });
     box.querySelector('[data-mon]').onchange = (e) => updateSettings({ monitor: e.target.checked });

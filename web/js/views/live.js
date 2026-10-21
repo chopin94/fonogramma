@@ -6,6 +6,7 @@ import { settings, updateSettings, wfConfig, WF_DETAIL } from '../settings.js';
 import { HEART_SITES, LUNG_SITES, HEART_TIPS, LUNG_TIPS, siteById } from '../sites.js';
 import { presetsFor, getPreset, EQ_LIVE_ID } from '../presets.js';
 import { LiveEngine, listInputs } from '../audio/engine.js';
+import { INPUT_TYPES, INPUT_KINDS, inputAdvice, inputRecord, worstLevel, diagnosticsText } from '../audio/input.js';
 import { DEMO_SCENARIOS } from '../audio/demo.js';
 import { encodeWav, decodeAny } from '../audio/wav.js';
 import { analyzeSamples, summarize } from '../audio/analyzer.js';
@@ -43,6 +44,7 @@ export async function mount(view, params, query) {
   let running = false, starting = false, recording = false, frozen = false;
   let lastHeart = null, lastLung = null, lastPeak = -120, weakSince = 0;
   let wakeLock = null, raf = 0, guided = null, guidedTimer = 0;
+  let inputInfo = null, advice = [], inputMuted = false;
 
   function initialPreset() {
     const s = siteById(site);
@@ -64,7 +66,7 @@ export async function mount(view, params, query) {
     </div>
     <div class="live-body">
       <div class="plots">
-        <div class="plot"><canvas data-scope></canvas><span class="plot-tag" data-scopetag></span></div>
+        <div class="plot"><canvas data-scope></canvas><span class="plot-tag" data-scopetag></span><button class="q-pill hidden" data-qpill></button></div>
         <div class="plot"><canvas data-wf></canvas><span class="plot-tag" data-wftag></span></div>
         <div class="overlay-msg" data-overlay></div>
         <div class="guided-banner hidden" data-banner></div>
@@ -311,6 +313,69 @@ export async function mount(view, params, query) {
     ov.querySelector('[data-ovadj]').onclick = openAdjust;
   }
 
+  // ---------- ingresso: tipo, avvisi, diagnostica ----------
+  function renderPill() {
+    const pill = q('[data-qpill]');
+    if (!running) { pill.classList.add('hidden'); return; }
+    let level = 'ok', text;
+    if (engine.source !== 'mic') text = engine.source === 'demo' ? 'Simulatore' : 'File audio';
+    else if (inputMuted) { level = 'bad'; text = 'Ingresso sospeso dal sistema'; }
+    else {
+      level = worstLevel(advice);
+      text = INPUT_TYPES[inputInfo ? inputInfo.type : 'unknown'].short;
+      if (level !== 'ok') text += ` · ${advice.find((a) => a.level === level).text.split(/[:.]/)[0]}`;
+    }
+    pill.className = `q-pill ${level}`;
+    pill.innerHTML = `<i></i><span>${esc(text)}</span>`;
+  }
+
+  async function openInputSheet() {
+    const inputs = await listInputs().catch(() => []);
+    const kindName = (INPUT_KINDS.find((k) => k.id === settings.inputKind) || INPUT_KINDS[0]).name;
+    const live = running && engine.source === 'mic' && inputInfo;
+    const i = inputInfo;
+    const state = (v) => (v === true ? 'attiva' : v === false ? 'spenta' : 'n.d.');
+    const body = el(`<div class="col">
+      ${live ? `<dl class="kv">
+        <dt>Ingresso</dt><dd>${esc(INPUT_TYPES[i.type].name)}<div class="tiny muted">${esc(i.label || 'senza nome')}</div></dd>
+        <dt>Uso dichiarato</dt><dd>${esc(kindName)}</dd>
+        <dt>Campionamento</dt><dd>${i.trackRate ? `${n0(i.trackRate)} Hz` : 'n.d.'} (motore ${n0(i.ctxRate)} Hz)</dd>
+        <dt>Eco · rumore · volume automatico</dt><dd>${state(i.processing.echoCancellation)} · ${state(i.processing.noiseSuppression)} · ${state(i.processing.autoGainControl)}</dd>
+        ${i.latencyMs ? `<dt>Ritardo dell’ascolto</dt><dd>${i.latencyMs} ms</dd>` : ''}
+      </dl>` : `<div class="small muted">${running ? 'La sorgente è il simulatore o un file: niente da verificare.' : 'Avvia l’ascolto con il fonendoscopio per vedere i dati dell’ingresso.'}</div>`}
+      ${advice.length ? `<div class="col" style="gap:8px">${advice.map((a) => `<div class="advice ${a.level}"><b>${esc(a.text)}</b>${a.fix ? `<div class="small">${esc(a.fix)}</div>` : ''}</div>`).join('')}</div>` : live ? '<div class="advice ok"><b>Nessun problema riconosciuto.</b></div>' : ''}
+      <div class="tiny muted">L’uso dichiarato si cambia in Impostazioni → Ingresso audio.</div>
+      <div class="row">
+        <button class="btn" data-adj>${icon('sliders', 'sm')} Cambia ingresso</button>
+        <button class="btn" data-copy>${icon('file', 'sm')} Copia diagnostica</button>
+      </div>
+      <div class="tiny muted">La diagnostica contiene il modello del browser e i nomi degli ingressi audio (possono includere il nome di un dispositivo), nessun dato dei pazienti.</div>
+    </div>`);
+    const sh = sheet({ title: 'Ingresso audio', body });
+    body.querySelector('[data-adj]').onclick = () => { sh.close(); openAdjust(); };
+    body.querySelector('[data-copy]').onclick = async () => {
+      const txt = diagnosticsText(live ? inputInfo : null, { kind: settings.inputKind, inputs, advice });
+      try {
+        await navigator.clipboard.writeText(txt);
+        toast('Diagnostica copiata: incollala in un messaggio');
+      } catch {
+        const ta = el(`<textarea readonly style="min-height:180px">${esc(txt)}</textarea>`);
+        body.appendChild(ta);
+        ta.select();
+        toast('Copia il testo selezionato');
+      }
+    };
+  }
+
+  function checkInput() {
+    inputMuted = false;
+    inputInfo = engine.source === 'mic' ? engine.input : null;
+    advice = inputInfo ? inputAdvice(inputInfo, settings.inputKind) : [];
+    renderPill();
+    const worst = worstLevel(advice);
+    if (worst !== 'ok') toast(advice.find((a) => a.level === worst).text, { type: worst === 'bad' ? 'error' : 'warn', timeout: 8000, action: { label: 'Dettagli', run: openInputSheet } });
+  }
+
   // ---------- motore ----------
   engine.on('frame', (d) => {
     scope.push(d);
@@ -345,6 +410,17 @@ export async function mount(view, params, query) {
     drawChart();
   });
   engine.on('error', (e) => toast(errText(e), { type: 'error' }));
+  engine.on('inputlost', async () => {
+    toast('Ingresso audio scollegato: ricollega il fonendo e riavvia l’ascolto.', { type: 'error', timeout: 8000 });
+    await stop();
+  });
+  engine.on('inputmute', (m) => { inputMuted = m; renderPill(); });
+  engine.on('devicechange', () => {
+    if (!running) return;
+    toast('Gli ingressi audio sono cambiati (cavo o cuffie Bluetooth): controlla che il suono arrivi ancora dal fonendo.', {
+      type: 'warn', timeout: 8000, action: { label: 'Riavvia', run: async () => { await stop(); await start(); } },
+    });
+  });
 
   async function requestWake() {
     try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
@@ -366,6 +442,7 @@ export async function mount(view, params, query) {
       scope.setRate(engine.sampleRate, Math.round(engine.sampleRate / 1000));
       scope.reset();
       reconfigure();
+      checkInput();
       requestWake();
       if (settings.monitor && source === 'mic') toast('Ascolto in cuffia attivo: usa le cuffie per evitare il ritorno (fischio).', { timeout: 3000 });
     } catch (e) {
@@ -388,6 +465,7 @@ export async function mount(view, params, query) {
     try { wakeLock && (await wakeLock.release()); } catch {}
     wakeLock = null;
     renderButtons();
+    renderPill();
   }
 
   // ---------- registrazione ----------
@@ -398,7 +476,7 @@ export async function mount(view, params, query) {
       kind: mode, site, label: s ? s.full : 'Registrazione', visitId: visit ? visit.id : null, patientId: patient ? patient.id : null,
       duration: samples.length / fs, fs, preset: presetId, bands, gainDb: settings.gainDb, source: engine.source || settings.source,
       denoise: settings.denoise && mode === 'heart' ? settings.denoiseStrength : 0,
-      device: engine.inputLabel || '', ...extra,
+      device: engine.inputLabel || '', input: engine.source === 'mic' ? inputRecord(inputInfo, settings.inputKind) : null, ...extra,
     };
     const saved = await repo.saveRecording(rec, encodeWav(samples, fs));
     toast(`Salvata: ${rec.label} (${fmtDur(rec.duration)})`, { action: { label: 'Apri', run: () => { location.hash = `#/rec/${saved.id}`; } } });
@@ -714,6 +792,7 @@ export async function mount(view, params, query) {
   q('[data-freeze]').onclick = () => { frozen = !frozen; scope.frozen = wf.frozen = frozen; if (!frozen) { scope.dirty = wf.dirty = true; } renderButtons(); };
   q('[data-snap]').onclick = snapshot;
   q('[data-adjust]').onclick = openAdjust;
+  q('[data-qpill]').onclick = openInputSheet;
   q('[data-guided]').onclick = () => (guided ? stopGuided(true) : startGuided());
   q('[data-info]').onclick = () => {
     const body = el(`<div class="col guide-card"></div>`);
