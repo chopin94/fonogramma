@@ -10,10 +10,16 @@ import { exportBackup, importBackup } from '../store/backup.js';
 import { persist } from '../store/db.js';
 import { icon } from '../ui/icons.js';
 import { APP_VERSION, SOURCE_URL } from '../version.js';
+import { PROFILES } from '../profiles.js';
 
 export async function mount(view) {
   view.innerHTML = `<div class="page">
     <h1>Impostazioni</h1>
+    <div class="card col" style="margin-bottom:12px">
+      <h3>${icon('user')} Chi usa l’app</h3>
+      <div class="seg" data-prof>${PROFILES.map((p) => `<button data-v="${p.id}">${p.name}</button>`).join('')}</div>
+      <div class="small muted" data-profdesc></div>
+    </div>
     <div class="grid two">
       <div class="card col" data-input></div>
       <div class="card col">
@@ -82,6 +88,14 @@ export async function mount(view) {
     };
   }
   renderInput();
+
+  // --- profilo ---
+  const rprof = () => {
+    q('[data-prof]').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.profile));
+    q('[data-profdesc]').textContent = (PROFILES.find((p) => p.id === settings.profile) || PROFILES[0]).desc;
+  };
+  rprof();
+  q('[data-prof]').querySelectorAll('button').forEach((b) => { b.onclick = () => { updateSettings({ profile: b.dataset.v }); rprof(); }; });
 
   // --- registrazione ---
   q('[data-loop]').oninput = (e) => { q('[data-lv]').textContent = `${e.target.value} s`; updateSettings({ loopSeconds: +e.target.value }); };

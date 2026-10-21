@@ -36,6 +36,7 @@ Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i po
    - **Android / PC (Chrome, Edge):** menu ⋮ → **Installa app**, oppure il pulsante *Installa* nella Home
    - **iPhone / iPad (Safari):** pulsante Condividi → **Aggiungi a Home**
 3. **Collega** il fonendoscopio, tocca **Ausculta** → **Avvia** e consenti l'uso del microfono.
+4. La prima volta fai la **verifica dell'ingresso** (30 secondi): l'app controlla che il suono arrivi davvero dal fonendo e ti dice cosa correggere.
 
 > 💡 **Non hai ancora il fonendoscopio collegato?** Provala subito con il **simulatore**:
 > *Ausculta → **Sorgente** (o l’icona Regolazioni, i cursori in basso a destra) → Simulatore* e scegli un caso (soffi, galoppi,
@@ -90,6 +91,26 @@ Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i po
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🎯 Suono pulito, guidato
+- **Riconosce l'ingresso**: jack, USB, Bluetooth o microfono del telefono, e se il sistema altera il suono
+- **Verifica guidata** in 3 passi: colpi sulla membrana, fonendo in aria, fonendo sul torace
+- **Semaforo** sul tracciato con il rimedio: voce, sfregamento, urti, ronzio a 50 Hz, saturazione, battito poco chiaro
+- I tratti disturbati vengono **segnati ed esclusi** dal conteggio dei crepitii
+
+</td>
+<td valign="top">
+
+### 🏠 Registrazione a casa
+- Profilo **Paziente**: ti guida punto per punto, con la posizione spiegata in parole semplici
+- Registra **da sola** appena il suono è pulito e propone di **ripetere** i punti disturbati
+- Alla fine **Invia al medico**: un file da mandare con WhatsApp o email, che il medico apre in Fonogramma
+- Profili **Medico** e **Studente** per decidere quanta guida mostrare
+
+</td>
+</tr>
 </table>
 
 <div align="center">
@@ -104,34 +125,52 @@ Collega il fonendoscopio al jack del telefono o del PC: **vedi** il cuore e i po
 
 | | |
 |---|---|
-| **Fonendoscopio con uscita jack** | Un fonendoscopio elettronico o un microfono da fonendoscopio con cavo jack da 3,5 mm |
+| **Fonendoscopio con uscita jack** | Un fonendoscopio elettronico o un microfono da fonendoscopio con cavo jack da 3,5 mm; va bene anche un microfono o una scheda audio **USB** |
 | **Telefono o PC** | Chrome, Edge o Safari recenti. Funziona su Android, iPhone, Windows, macOS e Linux |
 | **Adattatore (se serve)** | Se il telefono non ha il jack: adattatore **USB-C → jack con ingresso microfono**. Se il cavo ha 3 contatti (TRS) e il telefono vuole quello da 4 (TRRS), usa uno sdoppiatore cuffie/microfono |
-| **Cuffie** *(consigliate)* | Per ascoltare senza il fischio di ritorno dell'altoparlante |
+| **Cuffie con filo** *(consigliate)* | Per ascoltare senza il fischio di ritorno dell'altoparlante. Le cuffie Bluetooth ritardano il suono e su alcuni telefoni (spesso iPhone) prendono il posto del microfono del fonendo |
+| **Senza fonendo?** | Puoi appoggiare il **telefono sul torace** (bordo inferiore, pelle nuda): va bene per il cuore, meno per i polmoni. I fonendi **Bluetooth** funzionano solo se il telefono li vede come microfono, con qualità ridotta |
 
 ---
 
 ## 📖 Guida rapida
 
+### 0 · La prima volta: verifica l'ingresso
+*Impostazioni → Ingresso audio*: scegli **come acquisisci il suono** (fonendo con filo, telefono sul torace, fonendo
+Bluetooth) e tocca **Verifica guidata dell'ingresso**. In 30 secondi: picchietta 3 volte la membrana, tienila ferma
+in aria, poi appoggiala sul cuore. L'app ti dice se l'ingresso è adatto e cosa correggere.
+
 ### 1 · Auscultazione libera
 1. **Ausculta** → scegli **Cuore** o **Torace** in alto.
 2. Tocca il nome del **punto** (es. *Focolaio aortico*) per sceglierlo sulla mappa: il filtro giusto si imposta da solo.
 3. **Avvia**. In alto vedi il tracciato, sotto il waterfall e a destra (o sotto, sul telefono) le misure.
-4. **Registra** per salvare, oppure **Ultimi 15 s** per tenere quello che hai appena sentito.
+4. Guarda il **semaforo** in alto a sinistra sul tracciato: verde vuol dire suono pulito; se è giallo o rosso dice
+   il problema (voce, sfregamento, urti, ronzio…). Toccalo per il rimedio e i dettagli dell'ingresso.
+5. **Registra** per salvare, oppure **Ultimi 15 s** per tenere quello che hai appena sentito.
 
 ### 2 · Visita completa
 1. **Home → Nuova visita** e scegli o crea il paziente.
 2. Compila anamnesi e parametri vitali.
-3. **Esame guidato**: l'app ti porta punto per punto (cuore e torace), registra e analizza ogni punto.
+3. **Esame guidato**: l'app ti porta punto per punto (cuore e torace), aspetta un suono pulito, registra e
+   analizza ogni punto; se una registrazione è disturbata ti propone di ripeterla.
 4. Controlla i reperti proposti, aggiungi le tue conclusioni e apri il **Referto** → *Stampa / PDF*.
 
 ### 3 · Riascoltare una registrazione
-Apri una registrazione dall'**Archivio**: puoi metterla in **loop** (tutta, una selezione o 1–3 cicli
-cardiaci), **rallentarla**, cambiare filtro, fare zoom e leggere la tabella dei battiti e degli eventi.
+Apri una registrazione dall'**Archivio**: si sente e si vede **come durante l'auscultazione** (stesso filtro e
+stessa riduzione del rumore). Puoi metterla in **loop** (tutta, una selezione o 1–3 cicli cardiaci),
+**rallentarla**, cambiare filtro, fare zoom e leggere la tabella dei battiti e degli eventi. I tratti disturbati
+sono in rosso. **WAV** scarica l'audio come lo ascolti; l'originale non filtrato è in *Altro*.
 
 ### 4 · Regolazioni utili
 L’icona **Regolazioni** (i cursori in basso a destra) nella schermata di auscultazione apre sorgente (fonendoscopio, simulatore o file
-WAV/MP3), guadagno, canale sinistro/destro, filtri, equalizzatore e dettaglio del waterfall.
+WAV/MP3), guadagno, canale sinistro/destro, filtri, equalizzatore e dettaglio del waterfall. Nel simulatore ci
+sono anche i **disturbi** (voce, sfregamento, ronzio, urti, stanza rumorosa) per vedere come reagisce il semaforo.
+
+### 5 · Registrazione a casa per il medico
+In *Impostazioni → Chi usa l'app* scegli **Paziente**: in Home compare **Registrazione per il medico**. Scrivi il
+nome, scegli cuore e/o respiro e segui le istruzioni: per ogni punto l'app mostra dove appoggiare il fonendo,
+registra da sola quando il suono è pulito e alla fine prepara il file da **inviare al medico**. Il medico lo apre
+con *Impostazioni → Importa backup* e trova il paziente con la visita *Registrazione a domicilio*.
 
 ---
 
@@ -154,6 +193,27 @@ WAV/MP3), guadagno, canale sinistro/destro, filtri, equalizzatore e dettaglio de
 - Molti cavi hanno il segnale su un solo lato: prova **Canale → Sinistro** o **Destro**.
 - Sul telefono serve un ingresso **microfono** (TRRS o adattatore USB-C con microfono), non un'uscita cuffie normale.
 - Alza il **guadagno** nelle regolazioni.
+- Fai la **verifica guidata dell'ingresso**: se picchiettando la membrana non arriva nessun colpo, il suono non
+  arriva dal fonendo e l'app ti dice perché.
+</details>
+
+<details>
+<summary><b>Il semaforo è giallo o rosso: cosa significa?</b></summary>
+
+- **Voce**: qualcuno parla; la voce può sembrare un soffio. Silenzio, e il paziente respiri senza parlare.
+- **Sfregamento**: la membrana striscia su pelle, peli o vestiti e fa rumori simili ai crepitii. Pelle nuda, fonendo fermo, peli inumiditi.
+- **Urti o movimenti**: tieni fermi fonendo e tubo, con pressione costante.
+- **Ronzio a 50 Hz**: di solito il caricatore del telefono o il cavo vicino a una presa. Stacca il caricatore.
+- **Il telefono taglia i silenzi**: è attiva la riduzione del rumore del sistema. Su iPhone: Centro di Controllo → *Modalità microfono* → *Standard*.
+- **Battito poco chiaro / Respiro poco udibile**: premi meglio la membrana, sposta di poco il punto, riduci il rumore della stanza.
+</details>
+
+<details>
+<summary><b>Posso usare le cuffie Bluetooth?</b></summary>
+
+Per ascoltare sì, ma il suono arriva con un piccolo ritardo e su molti telefoni, collegandole, il telefono usa il
+**loro microfono** al posto del fonendo: l'app se ne accorge e te lo segnala. Per auscultare meglio usa cuffie con
+filo, oppure guarda il tracciato e riascolta dopo.
 </details>
 
 <details>

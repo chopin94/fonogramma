@@ -1,5 +1,6 @@
 // Home: avvio rapido, nuova visita, visite recenti, registrazioni libere.
 import { esc, fmtDateTime, patientName, ageFrom } from '../util.js';
+import { settings } from '../settings.js';
 import * as repo from '../store/repo.js';
 import { icon } from '../ui/icons.js';
 import { startNewVisit, recordingRow, avatarHtml } from './common.js';
@@ -14,7 +15,12 @@ export async function mount(view) {
     ${!window.isSecureContext ? `<div class="card" style="border-color:var(--warn);margin-bottom:12px">
       <h3>${icon('shield')} Connessione non sicura</h3>
       <p class="small">Il microfono e l'installazione dell'app richiedono una connessione sicura: apri l'app dal suo indirizzo <b>https://</b>.</p></div>` : ''}
-    <div class="hero">
+    ${settings.profile === 'paziente' ? `<div class="card hero-main" style="margin-bottom:12px">
+      <h1>Registrazione per il medico</h1>
+      <p class="muted">Ti guido punto per punto: dove appoggiare il fonendo, quando registrare e come mandare le registrazioni al medico.</p>
+      <div class="row" style="margin:12px 0 6px"><a class="btn primary lg" href="#/autoreg">${icon('stetho')} Inizia la registrazione</a><a class="btn lg" href="#/live?check=1&autostart=1">${icon('check')} Verifica il fonendo</a></div>
+    </div>` : ''}
+    <div class="hero" ${settings.profile === 'paziente' ? 'style="grid-template-columns:1fr"' : ''}>
       <div class="card hero-main">
         <h1>${greeting()}</h1>
         <p class="muted">Collega il fonendoscopio al jack, scegli il focolaio e ascolta. Tracciato, waterfall e analisi in tempo reale.</p>
@@ -24,7 +30,7 @@ export async function mount(view) {
         </div>
         <div class="row" id="install-row"></div>
       </div>
-      <div class="card col">
+      <div class="card col ${settings.profile === 'paziente' ? 'hidden' : ''}">
         <h3>${icon('clipboard')} Visita medica</h3>
         <p class="small muted">Anagrafica, parametri vitali, esame guidato dei 4 focolai cardiaci e dei 12 punti toracici, referto stampabile.</p>
         <button class="btn primary" id="new-visit">${icon('plus')} Nuova visita</button>

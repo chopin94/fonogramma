@@ -95,6 +95,29 @@ export const LUNG_PAIRS = [
   ['post-sup-dx', 'post-sup-sx'], ['post-med-dx', 'post-med-sx'], ['post-inf-dx', 'post-inf-sx'],
 ];
 
+// Descrizioni semplici per chi registra a casa senza formazione medica (destra e
+// sinistra sono quelle di chi viene auscultato).
+const SIMPLE = {
+  aortico: 'In alto, a destra dello sterno (l’osso al centro del petto), appena sotto la clavicola.',
+  polmonare: 'In alto, a sinistra dello sterno, appena sotto la clavicola.',
+  erb: 'A sinistra dello sterno, un dito più in basso del punto precedente.',
+  tricuspidale: 'In basso, a sinistra dello sterno, dove finiscono le costole al centro del petto.',
+  mitralico: 'Sotto il capezzolo sinistro (sotto il seno), dove senti battere il cuore più forte.',
+  'ant-sup-dx': 'Petto, in alto a destra: sotto la clavicola, a metà strada tra collo e spalla.',
+  'ant-sup-sx': 'Petto, in alto a sinistra: sotto la clavicola, a metà strada tra collo e spalla.',
+  'ant-med-dx': 'Petto, a destra, poco sopra il capezzolo.',
+  'ant-med-sx': 'Petto, a sinistra, all’altezza del capezzolo, spostato verso l’ascella.',
+  'lat-dx': 'Fianco destro, sotto l’ascella, a metà del torace.',
+  'lat-sx': 'Fianco sinistro, sotto l’ascella, a metà del torace.',
+  'post-sup-dx': 'Schiena, in alto a destra, tra la colonna e la scapola.',
+  'post-sup-sx': 'Schiena, in alto a sinistra, tra la colonna e la scapola.',
+  'post-med-dx': 'Schiena, a destra, sotto la punta della scapola.',
+  'post-med-sx': 'Schiena, a sinistra, sotto la punta della scapola.',
+  'post-inf-dx': 'Schiena, in basso a destra, sopra le ultime costole.',
+  'post-inf-sx': 'Schiena, in basso a sinistra, sopra le ultime costole.',
+};
+for (const s of [...HEART_SITES, ...LUNG_SITES]) s.simple = SIMPLE[s.id] || s.where;
+
 export function siteById(id) {
   return HEART_SITES.find((s) => s.id === id) || LUNG_SITES.find((s) => s.id === id) || null;
 }

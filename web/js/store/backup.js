@@ -22,17 +22,24 @@ function base64ToBlob(b64, type = 'audio/wav') {
   return new Blob([out], { type });
 }
 
-// Il file viene composto a pezzi per non creare un'unica stringa enorme.
-export async function exportBackup() {
+// Il file viene composto a pezzi per non creare un'unica stringa enorme. Con
+// recordingIds si esportano solo quelle registrazioni con le loro visite e i loro
+// pazienti (es. le registrazioni fatte a casa da mandare al medico).
+export async function exportBackup({ recordingIds = null } = {}) {
   const parts = [`{"format":"${FORMAT}","version":1,"exportedAt":${Date.now()}`];
-  for (const k of KINDS) {
-    const docs = (await db.all(k)).filter((d) => !d.deleted).map(({ dirty, audioSynced, ...rest }) => rest); // campi della vecchia sincronizzazione
-    parts.push(`,${JSON.stringify(k)}:${JSON.stringify(docs)}`);
+  const docs = {};
+  for (const k of KINDS) docs[k] = (await db.all(k)).filter((d) => !d.deleted).map(({ dirty, audioSynced, ...rest }) => rest); // campi della vecchia sincronizzazione
+  if (recordingIds) {
+    const ids = new Set(recordingIds);
+    docs.recordings = docs.recordings.filter((r) => ids.has(r.id));
+    const visits = new Set(docs.recordings.map((r) => r.visitId)), patients = new Set(docs.recordings.map((r) => r.patientId));
+    docs.visits = docs.visits.filter((v) => visits.has(v.id));
+    docs.patients = docs.patients.filter((p) => patients.has(p.id));
   }
+  for (const k of KINDS) parts.push(`,${JSON.stringify(k)}:${JSON.stringify(docs[k])}`);
   parts.push(',"audio":{');
   let first = true, n = 0;
-  for (const r of await db.all('recordings')) {
-    if (r.deleted) continue;
+  for (const r of docs.recordings) {
     const blob = await db.get('blobs', r.id);
     if (!blob) continue;
     parts.push(`${first ? '' : ','}${JSON.stringify(r.id)}:"${await blobToBase64(blob)}"`);

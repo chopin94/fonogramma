@@ -1,6 +1,7 @@
 // Avvio dell'app: router, service worker (offline/installazione), avviso iniziale.
-import { applyTheme } from './settings.js';
-import { toast, sheet } from './util.js';
+import { applyTheme, settings, updateSettings } from './settings.js';
+import { toast, sheet, el } from './util.js';
+import { PROFILES } from './profiles.js';
 
 const routes = [
   [/^\/?$/, 'home', () => import('./views/home.js')],
@@ -11,6 +12,7 @@ const routes = [
   [/^\/rec\/([\w-]+)$/, 'patients', () => import('./views/recording.js')],
   [/^\/report\/([\w-]+)$/, 'patients', () => import('./views/report.js')],
   [/^\/settings$/, 'settings', () => import('./views/settings.js')],
+  [/^\/autoreg$/, 'home', () => import('./views/selfrec.js')],
 ];
 
 let cleanup = null;
@@ -86,15 +88,27 @@ window.addEventListener('beforeinstallprompt', (e) => {
 function firstRunNotice() {
   const KEY = 'fonogramma.notice.v1';
   try { if (localStorage.getItem(KEY)) return; } catch { return; }
-  sheet({
-    title: 'Prima di iniziare',
-    body: `<p class="lead">Fonogramma è uno strumento <b>didattico e di supporto</b> all'auscultazione.</p>
+  const body = el(`<div class="col">
+      <p class="lead">Fonogramma è uno strumento <b>didattico e di supporto</b> all'auscultazione.</p>
       <ul class="small">
         <li>Le analisi automatiche (toni, soffi, crepitii, frequenze) sono <b>indicative</b> e non costituiscono diagnosi.</li>
         <li><b>Non è un dispositivo medico</b> certificato: le decisioni cliniche restano del professionista.</li>
-        <li>I dati dei pazienti restano <b>solo su questo dispositivo</b>: fai ogni tanto un backup da Impostazioni.</li>
-      </ul>`,
-    actions: [{ label: 'Ho capito', kind: 'primary', run: () => { try { localStorage.setItem(KEY, '1'); } catch {} } }],
+        <li>I dati restano <b>solo su questo dispositivo</b>: fai ogni tanto un backup da Impostazioni.</li>
+      </ul>
+      <b>Chi usa l'app?</b>
+      <div class="col" style="gap:6px" data-prof>${PROFILES.map((p) => `<label class="check"><input type="radio" name="prof" value="${p.id}" ${p.id === settings.profile ? 'checked' : ''}> <span><b>${p.name}</b> · <span class="small muted">${p.desc}</span></span></label>`).join('')}</div>
+      <div class="tiny muted">Si cambia quando vuoi in Impostazioni.</div>
+    </div>`);
+  body.querySelector('[data-prof]').onchange = (e) => updateSettings({ profile: e.target.value });
+  sheet({
+    title: 'Prima di iniziare',
+    body,
+    actions: [{
+      label: 'Ho capito', kind: 'primary', run: () => {
+        try { localStorage.setItem(KEY, '1'); } catch {}
+        if (settings.profile === 'paziente' && /^#?\/?$/.test(location.hash)) route();
+      },
+    }],
   });
 }
 

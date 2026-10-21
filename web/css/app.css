@@ -257,7 +257,7 @@ label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .plot-tag { position: absolute; right: 8px; top: 6px; font-size: .72rem; color: #c9d6f3; background: rgba(5, 10, 22, .65); padding: 2px 8px; border-radius: 99px; pointer-events: none; }
 .plot-tag.left { right: auto; left: 40px; }
-.q-pill { position: absolute; left: 8px; top: 6px; display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 16px); font: inherit; font-size: .74rem; font-weight: 700; color: #e6eeff; background: rgba(5, 10, 22, .78); border: 1px solid rgba(255, 255, 255, .14); padding: 3px 10px 3px 8px; border-radius: 99px; cursor: pointer; z-index: 2; }
+.q-pill { position: absolute; left: 8px; top: 26px; display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 16px); font: inherit; font-size: .74rem; font-weight: 700; color: #e6eeff; background: rgba(5, 10, 22, .78); border: 1px solid rgba(255, 255, 255, .14); padding: 3px 10px 3px 8px; border-radius: 99px; cursor: pointer; z-index: 2; }
 .q-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .q-pill i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
 .q-pill.warn i { background: var(--warn); }
@@ -270,6 +270,27 @@ label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .advice.warn { border-left-color: var(--warn); }
 .advice.bad { border-left-color: var(--bad); }
 .check-flow .lead { font-size: 1.05rem; margin: 4px 0; }
+.coach-line { position: absolute; left: 8px; right: 8px; bottom: 6px; font-size: .78rem; color: #f3f6ff; background: rgba(5, 10, 22, .82); border-left: 3px solid var(--warn); padding: 4px 8px; border-radius: 6px; pointer-events: none; z-index: 2; }
+.selfrec { max-width: 760px; }
+.selfrec .lead { font-size: 1.05rem; }
+.selfrec-dots { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.selfrec-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--card2); border: 1px solid var(--line); }
+.selfrec-dots i.cur { background: var(--accent); border-color: var(--accent); }
+.selfrec-dots i.ok { background: var(--ok); border-color: var(--ok); }
+.selfrec-dots i.skip { background: var(--muted); }
+.selfrec-grid { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 14px; align-items: start; }
+.selfrec-map svg { width: 100%; height: auto; }
+.selfrec-action { position: sticky; bottom: 0; background: var(--bg); padding: 8px 0 4px; z-index: 3; }
+@media (max-width: 560px) {
+  .selfrec-grid { grid-template-columns: 104px 1fr; gap: 10px; }
+  .selfrec .lead { font-size: .98rem; margin: 4px 0; }
+  .selfrec-trace { height: 96px; }
+}
+.selfrec-light { display: flex; gap: 12px; align-items: center; padding: 10px 12px; margin: 12px 0 8px; border-radius: 12px; background: var(--card2); border: 2px solid var(--ok); }
+.selfrec-light > i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--ok); }
+.selfrec-light.warn { border-color: var(--warn); } .selfrec-light.warn > i { background: var(--warn); }
+.selfrec-light.bad { border-color: var(--bad); } .selfrec-light.bad > i { background: var(--bad); }
+.selfrec-trace { height: 130px; border-radius: 10px; overflow: hidden; background: #02050b; margin-bottom: 10px; }
 .tap-dots { display: flex; gap: 10px; }
 .tap-dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--card2); border: 2px solid var(--line); transition: background .2s; }
 .tap-dots i.on { background: var(--ok); border-color: var(--ok); }

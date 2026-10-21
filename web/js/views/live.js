@@ -73,7 +73,7 @@ export async function mount(view, params, query) {
     </div>
     <div class="live-body">
       <div class="plots">
-        <div class="plot"><canvas data-scope></canvas><span class="plot-tag" data-scopetag></span><button class="q-pill hidden" data-qpill></button></div>
+        <div class="plot"><canvas data-scope></canvas><span class="plot-tag" data-scopetag></span><button class="q-pill hidden" data-qpill></button><div class="coach-line hidden" data-coachline></div></div>
         <div class="plot"><canvas data-wf></canvas><span class="plot-tag" data-wftag></span></div>
         <div class="overlay-msg" data-overlay></div>
         <div class="guided-banner hidden" data-banner></div>
@@ -229,7 +229,7 @@ export async function mount(view, params, query) {
       <div class="row" style="margin:6px 0"><span class="badge accent">${esc(s.piece)}</span>${s.lobe ? `<span class="badge">${esc(s.lobe)}</span>` : ''}</div>
       ${s.position ? `<div class="small">${esc(s.position)}</div>` : ''}
       ${s.listen ? `<ul class="small">${s.listen.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
-      <details class="small" style="margin-top:6px"><summary class="muted">Consigli di auscultazione</summary><ul>${tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></details>` : '';
+      <details class="small" style="margin-top:6px" ${settings.profile === 'studente' ? 'open' : ''}><summary class="muted">Consigli di auscultazione</summary><ul>${tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></details>` : '';
   }
 
   async function renderSiteRecs() {
@@ -339,11 +339,16 @@ export async function mount(view, params, query) {
 
   function renderPill() {
     const pill = q('[data-qpill]');
-    if (!running) { pill.classList.add('hidden'); return; }
+    if (!running) { pill.classList.add('hidden'); q('[data-coachline]').classList.add('hidden'); return; }
     const c = coachCur || stateNow(null);
     pill.className = `q-pill ${c.level}`;
     pill.title = c.fix || 'Ingresso e qualità del segnale';
     pill.innerHTML = `<i></i><span>${esc(c.text)}</span>`;
+    // studenti e pazienti vedono subito anche il rimedio
+    const line = q('[data-coachline]');
+    const show = settings.profile !== 'medico' && c.level !== 'ok' && c.fix;
+    line.classList.toggle('hidden', !show);
+    if (show && line.textContent !== c.fix) line.textContent = c.fix;
   }
 
   async function diagnostics() {

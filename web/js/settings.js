@@ -16,6 +16,7 @@ export const WF_DETAIL = {
 
 export const DEFAULTS = {
   theme: 'auto',
+  profile: 'medico', // medico | studente | paziente: quanta guida mostrare
   source: 'mic',
   demoId: 'normale',
   deviceId: '',
@@ -50,6 +51,9 @@ export const DEFAULTS = {
   guidedCountdown: 3,
   guidedWaitClean: true, // l'esame guidato aspetta un segnale senza disturbi prima di registrare
   lastMode: 'heart',
+  selfName: '', // registrazione a casa (views/selfrec.js): nome, cosa registrare, aiuto per la schiena
+  selfWhat: 'heart',
+  selfHelper: false,
 };
 
 function merge(base, over) {
